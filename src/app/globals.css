@@ -1,4 +1,14 @@
+/* Tailwindcss */
 @import "tailwindcss";
+
+/* Flowbite CSS - React Setup */
+@plugin "flowbite-react/plugin/tailwindcss";
+@source "../../.flowbite-react/class-list.json";
+
+/* Flowbite CSS */
+@import "flowbite/src/themes/default";
+@plugin "flowbite/plugin";
+@source "../node_modules/flowbite";
 
 :root {
   --background: #ffffff;
@@ -14,7 +24,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
+    --background: #131517;
     --foreground: #ededed;
   }
 }
