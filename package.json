@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@privy-io/react-auth": "^3.3.0",
     "flowbite": "^3.1.2",
     "flowbite-react": "^0.12.9",
     "material-symbols": "^0.36.3",
