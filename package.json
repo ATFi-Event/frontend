@@ -1,5 +1,6 @@
 {
   "name": "atfi-project",
+  "description": "Bantu temen jadi FrontEnd Web3 - Sekalian belajar Web3",
   "version": "0.1.0",
   "private": true,
   "scripts": {

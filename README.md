@@ -10,17 +10,52 @@ Kurang lebih begitu.
 
 ### TEAM
 
-Lead of Project : Albary - [Github](https://github.com/EndPx) \
-Crew : Wijdan - [Github](https://github.com/simad9)
+Pemimpin Project : Albary - [Github](https://github.com/EndPx) \
+Krew : Wijdan - [Github](https://github.com/simad9)
 
 ### Kerjaan Saya
 
 - [ ] Membuat Frontend
-- [ ] Integrasi Privy untuk Authentikasi
+- [x] Integrasi Privy untuk Authentikasi
 - [ ] update to do list kerjaan...
 
 ### Yang sudah kerjakan -
 
-Update di 04/10/2025
+- Buat folder untuk bagian routes (04/10/2025)
+- Slicing landing page (13/10/2025)
+- Integrasi Privy untuk Auth (14/10/2025)
+- Lanjutin Privy dan buat Create Event (15/10/2025)
 
-- Membuat route untuk halaman yang dipakai
+---
+
+## English Documentation | Not Yet Updated
+
+---
+
+# ATFI PROJECT
+
+A Web3 project to solve the problem when people join an event but don't show up. \
+More or less like that.
+
+### TECH STACK
+
+- [Next.js](https://nextjs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+
+### TEAM
+
+Lead of Project : Albary - [Github](https://github.com/EndPx) \
+Crew : Wijdan - [Github](https://github.com/simad9)
+
+### My Job
+
+- [ ] Create Frontend
+- [x] Privy Integration for Authentication
+- [ ] update to do list of work...
+
+### What has been done
+
+- Create a folder for the routes section (04/10/2025)
+- Slicing landing page (13/10/2025)
+- Privy Integration for Auth (10/14/2025)
+- Continue Privy and create a Create Event (15/10/2025)
