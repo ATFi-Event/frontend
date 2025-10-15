@@ -3,11 +3,10 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
-import { Button } from "flowbite-react";
 
-export default function SigninPage() {
+export default function SigninRoutePage() {
   const router = useRouter();
-  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { ready, authenticated, user, login } = usePrivy();
   const hasTriggeredLogin = useRef(false); // ⛔️ flag supaya login() gak dipanggil terus
 
   useEffect(() => {

@@ -1,13 +1,9 @@
-"use client";
+import CreateForm from "@/components/features/create/CreateForm";
 
-export default function CreatePage() {
+export default function CreateRoutePage() {
   return (
     <>
-      {/* Provider Sudah Login */}
-      <section>
-
-      </section>
-      {/* Provider Sudah Login */}
+      <CreateForm />
     </>
   );
 }

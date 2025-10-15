@@ -4,6 +4,7 @@ import { Rubik } from "next/font/google";
 import "./globals.css";
 /* Material Symbols */
 import "material-symbols";
+import { ThemeModeScript } from "flowbite-react";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -23,7 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head></head>
+      <head>
+        <ThemeModeScript />
+      </head>
       <body className={rubik.className}>{children}</body>
     </html>
   );

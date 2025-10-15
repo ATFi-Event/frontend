@@ -24,7 +24,7 @@ Krew : Wijdan - [Github](https://github.com/simad9)
 - Buat folder untuk bagian routes (04/10/2025)
 - Slicing landing page (13/10/2025)
 - Integrasi Privy untuk Auth (14/10/2025)
-- Lanjutin Privy dan buat Create Event (15/10/2025)
+- Lanjutin Privy (15/10/2025)
 
 ---
 
