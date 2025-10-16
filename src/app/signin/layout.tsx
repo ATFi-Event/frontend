@@ -1,6 +1,6 @@
 "use client";
 
-import { Providers } from "@/components/features/signin/PrivyProvider";
+import { Providers } from "@/components/features/PrivyProvider";
 import { formatTime } from "@/utils/formaterDateAndTime";
 import Link from "next/link";
 import { useEffect, useState } from "react";

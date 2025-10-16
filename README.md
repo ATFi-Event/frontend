@@ -7,6 +7,10 @@ Kurang lebih begitu.
 
 - [Next.js](https://nextjs.org/)
 - [TypeScript](https://www.typescriptlang.org/)
+- [Tailwindcss](https://tailwindcss.com/)
+- [Flowbite](https://flowbite.com/) atau [Flowbite-react](https://flowbite-react.com/)
+- [Privy](https://www.privy.io/)
+- [Supabase](https://supabase.com/)
 
 ### TEAM
 
@@ -27,9 +31,10 @@ Krew : Wijdan - [Github](https://github.com/simad9)
 - Lanjutin Privy + Slicing ala kadarnya (15/10/2025)
 - Belajar supabase + Lanjut Slicing ala kadarnya (16/10/2025)
 
-### Catatan yang harus dikerjkan nanti 
+### Catatan yang harus dikerjkan nanti
+
 - Ketika user login dengan privy, masukin juga ke supabase
-- 
+-
 
 ---
 

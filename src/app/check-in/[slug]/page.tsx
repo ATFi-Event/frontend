@@ -1,3 +1,5 @@
+import ComingSoonPage from "@/components/features/ComingSoonPage";
+
 export default function CheckinPage({
   params: { slug },
 }: {
@@ -5,8 +7,9 @@ export default function CheckinPage({
 }) {
   return (
     <div>
-      <h1>Checkin Page</h1>
-      <p>Slug : {slug}</p>
+      <ComingSoonPage />  
+      {/* <h1>Checkin Page</h1>
+      <p>Slug : {slug}</p> */}
     </div>
   );
 }

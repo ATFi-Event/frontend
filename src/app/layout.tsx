@@ -5,6 +5,7 @@ import "./globals.css";
 /* Material Symbols */
 import "material-symbols";
 import { ThemeModeScript } from "flowbite-react";
+import { Providers } from "@/components/features/PrivyProvider";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -27,7 +28,9 @@ export default function RootLayout({
       <head>
         <ThemeModeScript />
       </head>
-      <body className={rubik.className}>{children}</body>
+      <body className={rubik.className}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

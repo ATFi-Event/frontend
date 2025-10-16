@@ -58,7 +58,6 @@ export default function Landing() {
               </Link>
               <Link
                 href="/signin"
-                type="button"
                 className="text-[#939094] bg-[#93909437] hover:bg-[#939094] hover:text-white font-normal rounded-full text-sm px-3 py-1 transition duration-300 ease-in-out"
               >
                 Sign In
