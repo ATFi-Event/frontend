@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@privy-io/react-auth": "^3.3.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.75.0",
     "flowbite": "^3.1.2",
     "flowbite-react": "^0.12.9",
     "material-symbols": "^0.36.3",

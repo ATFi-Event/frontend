@@ -24,7 +24,12 @@ Krew : Wijdan - [Github](https://github.com/simad9)
 - Buat folder untuk bagian routes (04/10/2025)
 - Slicing landing page (13/10/2025)
 - Integrasi Privy untuk Auth (14/10/2025)
-- Lanjutin Privy (15/10/2025)
+- Lanjutin Privy + Slicing ala kadarnya (15/10/2025)
+- Belajar supabase + Lanjut Slicing ala kadarnya (16/10/2025)
+
+### Catatan yang harus dikerjkan nanti 
+- Ketika user login dengan privy, masukin juga ke supabase
+- 
 
 ---
 
