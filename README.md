@@ -17,6 +17,14 @@ Kurang lebih begitu.
 Pemimpin Project : Albary - [Github](https://github.com/EndPx) \
 Krew : Wijdan - [Github](https://github.com/simad9)
 
+### Cara pake
+
+1. Clone repo
+2. npm i
+3. Ubah `.venv.example` menjadi `.env`
+4. Ganti isi nya sesuaikan dengan settingan akun masing masing
+5. npm run dev
+
 ### Kerjaan Saya
 
 - [ ] Membuat Frontend
@@ -34,9 +42,7 @@ Krew : Wijdan - [Github](https://github.com/simad9)
 ### Catatan yang harus dikerjkan nanti
 
 - Ketika user login dengan privy, masukin juga ke supabase
--
-
----
+- ***
 
 ## English Documentation | Not Yet Updated
 
