@@ -1,8 +1,10 @@
-export default function GuestsPage() {
+import OverviewContent from "@/components/features/manage-event/OverviewContent";
+
+export default function GuestsRouterage() {
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-4">Guests</h2>
-      <p>Daftar tamu event akan tampil di sini.</p>
+      <OverviewContent path="guests" />
+      <h1>Guest</h1>
     </div>
   );
 }

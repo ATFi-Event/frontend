@@ -1,15 +1,15 @@
 "use client";
 
 import Navbar from "@/components/organism/Navbar";
-import { Button } from "flowbite-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function HomePage() {
   return (
     <>
       <section className="min-h-screen">
         {/* Navbar */}
-        <Navbar />
+        <Navbar active="event" />
 
         {/* Main */}
         <div>
@@ -48,7 +48,14 @@ export default function HomePage() {
                     className="w-30 h-30 rounded-lg"
                   ></Image>
                 </div>
-                <Button>Manage Event</Button>
+                <Link href="event/manage/ev-123">
+                  <button className="flex items-center gap-1 bg-gray-400 text-gray-200 rounded-lg px-3 py-2 hover:bg-gray-500 hover:text-gray-200 transition delay-100 ease-in-out">
+                    Manage Event{" "}
+                    <span className="material-symbols-outlined">
+                      arrow_right_alt
+                    </span>
+                  </button>
+                </Link>
               </div>
             </div>
           </div>

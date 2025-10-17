@@ -1,10 +1,6 @@
 import ComingSoonPage from "@/components/features/ComingSoonPage";
 
-export default function CheckinRoutePage({
-  params: { slug },
-}: {
-  params: { slug: string };
-}) {
+export default function CalenderRoutePage() {
   return (
     <div>
       <ComingSoonPage />

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar, Tooltip, Popover } from "flowbite-react";
 
-export default function Navbar() {
+export default function Navbar({ active }: { active: string }) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -19,19 +19,37 @@ export default function Navbar() {
       <h1 className="text-[#939094] font-bold">ATFI</h1>
 
       {/* <div className="flex items-center text-sm gap-3 w-full"> */}
-      <div className="flex gap-3 items-center text-sm text-[#939094] text-semibold">
-        <h1 className="flex items-center justify-center gap-1 text-white group text-base transition duration-100">
+      <div
+        
+        className="flex gap-3 items-center text-sm text-[#939094] text-semibold"
+      >
+        <Link
+        href="/home"
+          className={`flex items-center justify-center gap-1 ${
+            active == "event" ? "text-white" : ""
+          } hover:text-white group text-base transition duration-100`}
+        >
           <span className="material-symbols-outlined">event</span>
           Event
-        </h1>
-        <h1 className="flex items-center justify-center gap-1 hover:text-white group text-base transition duration-100 ">
+        </Link>
+        <Link
+          href="/calender"
+          className={`flex items-center justify-center gap-1 ${
+            active == "calender" ? "text-white" : ""
+          } hover:text-white group text-base transition duration-100`}
+        >
           <span className="material-symbols-outlined ">calendar_today</span>
           Calender
-        </h1>
-        <h1 className="flex items-center justify-center gap-1 hover:text-white group text-base transition duration-100">
+        </Link>
+        <Link
+          href="/discover"
+          className={`flex items-center justify-center gap-1 ${
+            active == "discover" ? "text-white" : ""
+          } hover:text-white group text-base transition duration-100`}
+        >
           <span className="material-symbols-outlined">explore</span>
           Discover
-        </h1>
+        </Link>
       </div>
 
       {/* Bagian Kanan */}

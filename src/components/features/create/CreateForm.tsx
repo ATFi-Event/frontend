@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import NavbarLogin from "../NavbarLogin";
+import NavbarLogin from "../../organism/NavbarLogin";
 import CounterNumber from "./CounterNumber";
 
 export default function CreateForm() {
