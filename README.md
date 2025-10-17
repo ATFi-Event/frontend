@@ -43,8 +43,8 @@ Krew : Wijdan - [Github](https://github.com/simad9)
 - [x] Landing Page
 - [x] Home Page
 - [x] Signin Page 
-- [x] Create Page
-- [ ] Event Manage Page
+- [x] Create Page (masih rusak)
+- [x] Event Manage Page
 - [x] Event Guests Page
 - [ ] Checkin Page
 - [ ] Discover - coming soon

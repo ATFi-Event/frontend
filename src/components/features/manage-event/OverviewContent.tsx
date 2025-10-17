@@ -1,11 +1,12 @@
 import CancelEventOverview from "@/components/organism/CancelEventOverview";
 import GuestsEventOverview from "@/components/organism/GuestsEventOverview";
+import HostEventOverview from "@/components/organism/HostEventOverview";
 import { Avatar, Button, ClipboardWithIcon } from "flowbite-react";
 import Image from "next/image";
 
 export default function OverviewContent() {
   return (
-    <div className="mx-[240px] px-3 mt-5 flex flex-col gap-3">
+    <div className="mx-[240px] px-3 mt-5 mb-10 flex flex-col gap-3">
       {/* Detail Event */}
       <section>
         <h1 className="text-2xl text-gray-200 font-semibold mb-3">
@@ -13,7 +14,6 @@ export default function OverviewContent() {
         </h1>
         <div className="flex justify-between gap-5 rounded-xl bg-gray-800 p-5 min-h-[300px]">
           <div className="w-full flex flex-col justify-between">
-
             <main>
               <div className="flex gap-3 mb-2">
                 <Image
@@ -98,8 +98,14 @@ export default function OverviewContent() {
       </section>
 
       <hr className="text-gray-700 bg-gray-700" />
+
       {/* Guest Overview */}
       <GuestsEventOverview />
+
+      <hr className="text-gray-700 bg-gray-700" />
+
+      {/* Hosts */}
+      <HostEventOverview />
 
       <hr className="text-gray-700 bg-gray-700" />
 

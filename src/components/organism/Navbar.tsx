@@ -7,24 +7,41 @@ import { Avatar, Tooltip, Popover } from "flowbite-react";
 
 export default function Navbar({ active }: { active: string }) {
   const [currentTime, setCurrentTime] = useState(new Date());
-
   useEffect(() => {
     const timerID = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timerID);
   }, []);
 
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 10) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   return (
-    <section className="flex justify-between items-center px-4 py-3 text-base bg-gradient-to-b from-[#14202c] to-[#131517] borer border-b-[#939094]">
+    <section
+      className={`flex justify-between items-center px-4 py-3 text-base bg-gradient-to-b from-[#14202c] to-[#131517] sticky top-0 z-10 ${
+        isScrolled
+          ? "shadow-md border-b border-gray-600 transition duration-200 ease-out"
+          : "border-b border-[#131517]"
+      } scroll-auto `}
+    >
       {/* Logo */}
       <h1 className="text-[#939094] font-bold">ATFI</h1>
 
       {/* <div className="flex items-center text-sm gap-3 w-full"> */}
-      <div
-        
-        className="flex gap-3 items-center text-sm text-[#939094] text-semibold"
-      >
+      <div className="flex gap-3 items-center text-sm text-[#939094] text-semibold">
         <Link
-        href="/home"
+          href="/home"
           className={`flex items-center justify-center gap-1 ${
             active == "event" ? "text-white" : ""
           } hover:text-white group text-base transition duration-100`}
