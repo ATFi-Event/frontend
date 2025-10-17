@@ -2,7 +2,7 @@ import ButtonCustom from "../ui/ButtonCustom";
 
 export default function JudulEvent() {
   return (
-    <div className="mx-[240px] pt-10 px-4">
+    <div className={`mx-[240px] pt-10 px-4`}>
       <p className="flex items-center text-sm text-gray-400 hover:text-pink-400 mb-2">
         Personal
         <svg

@@ -1,12 +1,11 @@
-"use client";
-
-import OverviewContent from "../../../../components/features/manage-event/OverviewContent";
+import OverviewContent from "@/components/features/manage-event/OverviewContent";
+import ManageContent from "@/components/features/manage-event/ManageContent";
 
 export default function EventRoutePage() {
   return (
     <div>
-      <OverviewContent path="overview" />
-      <h1>Overview</h1>
+      <ManageContent path="overview" />
+      <OverviewContent />
     </div>
   );
 }

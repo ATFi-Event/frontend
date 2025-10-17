@@ -1,10 +1,11 @@
-import OverviewContent from "@/components/features/manage-event/OverviewContent";
+import ManageContent from "@/components/features/manage-event/ManageContent";
+import GuestContent from "@/components/features/manage-event/GuestContent";
 
 export default function GuestsRouterage() {
   return (
     <div>
-      <OverviewContent path="guests" />
-      <h1>Guest</h1>
+      <ManageContent path="guests" />
+      <GuestContent />
     </div>
   );
 }
