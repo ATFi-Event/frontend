@@ -1,16 +1,26 @@
 import { useState } from "react";
 
-export default function CounterNumber() {
+interface CounterProps {
+  onCapacityChange: (newCapacity: number) => void;
+}
+
+export default function CounterNumber({ onCapacityChange }: CounterProps) {
   const [count, setCount] = useState(0);
 
   const handleDecrement = () => {
     if (count > 0) {
-      setCount(count - 1);
+      const newCount = count > 0 ? count - 1 : 0;
+      setCount(newCount);
+      // Panggil callback untuk mengirim data ke parent
+      onCapacityChange(newCount);
     }
   };
 
   const handleIncrement = () => {
-    setCount(count + 1);
+    const newCount = count + 1;
+    setCount(newCount);
+    // Panggil callback untuk mengirim data ke parent
+    onCapacityChange(newCount);
   };
 
   return (
@@ -42,7 +52,9 @@ export default function CounterNumber() {
           value={count}
           min={0}
           max={999}
-          onChange={(e) => setCount(Math.min(999, Number(e.target.value.replace(/\D/g, ''))))}
+          onChange={(e) =>
+            setCount(Math.min(999, Number(e.target.value.replace(/\D/g, ""))))
+          }
           aria-describedby="helper-text-explanation"
           // Pastikan text-center ada di sini!
           className="bg-gray-50 border-x-0 border-gray-300 h-11 text-center text-gray-900 text-sm focus:ring-gray-500 focus:border-gray-500 block w-full py-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-gray-500 dark:focus:border-gray-500"

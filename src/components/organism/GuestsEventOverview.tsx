@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, Badge, Progress } from "flowbite-react";
+import { Progress } from "flowbite-react";
 import ButtonCustom from "../ui/ButtonCustom";
 import CardGuest from "../ui/CardGuests";
 import Link from "next/link";
