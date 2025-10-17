@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import NavbarLogin from "../../organism/NavbarLogin";
 import CounterNumber from "./CounterNumber";
-import { Popover, ToggleSwitch } from "flowbite-react";
+import { Popover } from "flowbite-react";
 import { useState } from "react";
 import React from "react"; // Tambahkan import React
+import Navbar from "@/components/organism/Navbar";
 
 interface GmtOption {
   offset: string;
@@ -145,7 +145,7 @@ export default function CreateForm() {
     <>
       <section className="min-h-screen p-3 bg-gradient-to-br from-[#003251] to-[#003251]">
         {/* NAVBAR */}
-        <NavbarLogin />
+        <Navbar active="none" create={true} />
         {/* END NAVBAR */}
 
         {/* MAIN FORM */}
@@ -292,6 +292,7 @@ export default function CreateForm() {
                         name="end-date-time"
                         id=""
                         className="bg-transparent rounded-xl w-full"
+                        min={todayFormatted}
                         value={endDate}
                         onChange={handleEndDateChange}
                       />
@@ -396,7 +397,7 @@ export default function CreateForm() {
                         value=""
                         className="sr-only peer"
                         checked={isApproved}
-                        onClick={handleApprovalChange}
+                        onChange={handleApprovalChange}
                       />
                       <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gray-300 dark:peer-focus:ring-gray-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-gray-600 dark:peer-checked:bg-gray-800"></div>
                     </label>

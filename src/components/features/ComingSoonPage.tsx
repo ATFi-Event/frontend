@@ -1,7 +1,6 @@
 "use client";
 
-// Menggunakan 'use client' jika Anda ingin menambahkan interaksi atau state
-// import React from 'react';
+import Link from "next/link";
 
 const ComingSoonPage = () => {
   return (
@@ -32,6 +31,8 @@ const ComingSoonPage = () => {
         <div className="mt-6 text-xl text-gray-500">
           <p>In progress</p>
         </div>
+
+        <Link href="/home">Kembali</Link>
       </div>
     </div>
   );

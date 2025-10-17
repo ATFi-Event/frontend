@@ -5,7 +5,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Avatar, Tooltip, Popover } from "flowbite-react";
 
-export default function Navbar({ active }: { active: string }) {
+export default function Navbar({
+  active,
+  create,
+}: {
+  active?: string;
+  create?: boolean;
+}) {
   const [currentTime, setCurrentTime] = useState(new Date());
   useEffect(() => {
     const timerID = setInterval(() => setCurrentTime(new Date()), 60000);
@@ -27,13 +33,19 @@ export default function Navbar({ active }: { active: string }) {
     };
   }, []);
 
+  // --- LOGIKA STYLING YANG DIPERBAIKI ---
+  const navbarClasses = isScrolled
+    ? // Kondisi 1: Jika scrolled, selalu gunakan styling shadow dan border gelap
+      "bg-gradient-to-b from-[#14202c] to-[#131517] shadow-md border-b border-gray-600 transition duration-200 ease-out"
+    : create
+    ? // Kondisi 2: Jika create=true dan TIDAK scrolled, transparan
+      "bg-transparent shadow-none border-b border-transparent" // border-transparent adalah kunci
+    : // Kondisi 3: Default (bukan create, tidak scrolled)
+      "bg-gradient-to-b from-[#14202c] to-[#131517] border-b border-[#131517]";
+
   return (
     <section
-      className={`flex justify-between items-center px-4 py-3 text-base bg-gradient-to-b from-[#14202c] to-[#131517] sticky top-0 z-10 ${
-        isScrolled
-          ? "shadow-md border-b border-gray-600 transition duration-200 ease-out"
-          : "border-b border-[#131517]"
-      } scroll-auto `}
+      className={`flex justify-between items-center px-4 py-3 text-base sticky top-0 z-10 scroll-auto ${navbarClasses}`}
     >
       {/* Logo */}
       <h1 className="text-[#939094] font-bold">ATFI</h1>
