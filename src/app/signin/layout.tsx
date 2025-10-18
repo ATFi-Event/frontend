@@ -1,6 +1,5 @@
 "use client";
 
-import { Providers } from "@/components/features/PrivyProvider";
 import NavbarNotLogin from "@/components/organism/NavbarNotLogin";
 import { formatTime } from "@/utils/formaterDateAndTime";
 import Link from "next/link";
@@ -19,9 +18,8 @@ export default function RootLayout({
           <NavbarNotLogin />
           {/* END Header */}
 
-          {/* Untuk Pop Up Privy */}
-          <Providers>{children}</Providers>
-          {/* END Untuk Pop Up Privy */}
+          {/* Children are already wrapped by PrivyProvider in root layout */}
+          {children}
         </div>
       </section>
     </>

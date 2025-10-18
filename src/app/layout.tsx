@@ -2,8 +2,6 @@ import * as React from "react";
 import type { Metadata } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
-/* Material Symbols */
-import "material-symbols";
 import { ThemeModeScript } from "flowbite-react";
 import { Providers } from "@/components/features/PrivyProvider";
 
@@ -28,7 +26,7 @@ export default function RootLayout({
       <head>
         <ThemeModeScript />
       </head>
-      <body className={rubik.className}>
+      <body className={rubik.className} style={{ cursor: 'auto' }} suppressHydrationWarning={true}>
         <Providers>{children}</Providers>
       </body>
     </html>

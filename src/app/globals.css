@@ -1,26 +1,13 @@
-/* Tailwindcss */
-@import "tailwindcss";
-
-/* Flowbite CSS - React Setup */
-@plugin "flowbite-react/plugin/tailwindcss";
-@source "../../.flowbite-react/class-list.json";
-
-/* Flowbite CSS */
-@import "flowbite/src/themes/default";
-@plugin "flowbite/plugin";
-@source "../node_modules/flowbite";
+/* Tailwind CSS Base */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
 @media (prefers-color-scheme: dark) {
   :root {

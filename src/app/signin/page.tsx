@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
 
@@ -8,6 +8,14 @@ export default function SigninRoutePage() {
   const router = useRouter();
   const { ready, authenticated, user, login } = usePrivy();
   const hasTriggeredLogin = useRef(false); // ⛔️ flag supaya login() gak dipanggil terus
+  const hasCheckedProfile = useRef(false); // ⛔️ flag supaya checkProfile() gak dipanggil berkali-kali
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [isCheckingProfile, setIsCheckingProfile] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   useEffect(() => {
     if (ready) console.log("Privy user object:", user);
@@ -15,6 +23,7 @@ export default function SigninRoutePage() {
 
   const walletAddress = user?.wallet?.address ?? null;
   const userId = user?.id ?? null;
+  const userEmail = user?.email?.address ?? null;
 
   // 🚀 Auto-login saat halaman dibuka
   useEffect(() => {
@@ -24,13 +33,86 @@ export default function SigninRoutePage() {
     }
   }, [ready, authenticated, login]);
 
-  // Redirect kalau sudah login
+  // 🔍 Check profile when authenticated
   useEffect(() => {
-    if (authenticated) {
-      router.push("/home");
-      console.log("User authenticated — redirecting to /home");
+    if (authenticated && walletAddress && !hasCheckedProfile.current && !isCheckingProfile) {
+      hasCheckedProfile.current = true; // tandai sudah check profile
+      checkProfile();
     }
-  }, [authenticated, router]);
+  }, [authenticated, walletAddress, isCheckingProfile]);
+
+  const checkProfile = async () => {
+    if (!walletAddress) return;
+
+    setIsCheckingProfile(true);
+    try {
+      const response = await fetch(`http://localhost:8080/api/v1/profiles/${walletAddress}`);
+
+      if (response.status === 404) {
+        // Profile doesn't exist, show modal to create one
+        setShowProfileModal(true);
+      } else if (response.ok) {
+        // Profile exists, proceed to home
+        router.push("/home");
+        console.log("Profile exists — redirecting to /home");
+      } else {
+        // For any server error (500, etc.), show the modal to create profile
+        console.error("Profile check failed:", response.status, "Showing profile creation modal");
+        setShowProfileModal(true);
+      }
+    } catch (error) {
+      // For network errors, also show the modal to create profile
+      console.error("Profile check error:", error, "Showing profile creation modal");
+      setShowProfileModal(true);
+    } finally {
+      setIsCheckingProfile(false);
+    }
+  };
+
+  const createProfile = async () => {
+    if (!walletAddress || !profileName.trim()) {
+      setProfileError("Name is required");
+      return;
+    }
+
+    setIsCreatingProfile(true);
+    setProfileError("");
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/v1/profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          wallet_address: walletAddress,
+          name: profileName.trim(),
+          email: userEmail || null
+        }),
+      });
+
+      if (response.ok) {
+        console.log("Profile created successfully");
+        setShowProfileModal(false);
+        router.push("/home");
+      } else {
+        const errorData = await response.json();
+        setProfileError(errorData.error || "Failed to create profile. Please try again.");
+      }
+    } catch (error) {
+      setProfileError("Network error. Please try again.");
+      console.error("Profile creation error:", error);
+    } finally {
+      setIsCreatingProfile(false);
+    }
+  };
+
+  const closeModal = () => {
+    setShowProfileModal(false);
+    setProfileName("");
+    setProfileEmail("");
+    setProfileError("");
+  };
 
   return (
     <div className="flex justify-center items-center h-screen">
@@ -56,18 +138,36 @@ export default function SigninRoutePage() {
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-2">
-          <h1>Sign In</h1>
-          {authenticated ? (
+          <h1 className="text-white">Sign In</h1>
+          {isCheckingProfile && (
+            <div className="flex flex-col items-center gap-2">
+              <svg
+                aria-hidden="true"
+                className="inline w-6 h-6 text-white animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 4V1L8 5l1.41 1.41L11 4.17V15l2.59-2.59L17 11l-6 6z"
+                  fill="currentColor"
+                />
+              </svg>
+              <p className="text-gray-300 text-sm">Checking profile...</p>
+            </div>
+          )}
+          {authenticated && !isCheckingProfile && (
             <div className="flex flex-col justify-center items-center gap-1">
-              <p>Login Successful</p>
+              <p className="text-white">Login Successful</p>
               <div>
-                <p>Your ID: {userId ?? "Not Found"}</p>
-                <p>
+                <p className="text-gray-300">Your ID: {userId ?? "Not Found"}</p>
+                <p className="text-gray-300">
                   Wallet: {walletAddress ?? "Wallet has not been created yet"}
                 </p>
               </div>
             </div>
-          ) : (
+          )}
+          {!authenticated && (
             <div className="w-full">
               <button
                 type="button"
@@ -78,6 +178,78 @@ export default function SigninRoutePage() {
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Profile Creation Modal */}
+      {showProfileModal && (
+        <div className={`fixed inset-0 ${isInputFocused ? 'bg-black/70 backdrop-blur-sm' : 'bg-black/50'} flex items-center justify-center z-50 p-4 transition-all duration-300 ease-in-out`}>
+          <div className="bg-[#1a1a1a] rounded-2xl p-6 max-w-md w-full border border-gray-700">
+            <h2 className="text-xl font-bold text-white mb-4">Complete Your Profile</h2>
+            <p className="text-gray-400 text-sm mb-6">
+              Welcome to ATFI! Please provide your name to continue.
+            </p>
+
+            {profileError && (
+              <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 mb-4">
+                <p className="text-red-400 text-sm">{profileError}</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                  Name *
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  onFocus={() => setIsInputFocused(true)}
+                  onBlur={() => setIsInputFocused(false)}
+                  placeholder="Enter your name"
+                  className="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              <div className="pt-4">
+                <button
+                  onClick={createProfile}
+                  disabled={isCreatingProfile || !profileName.trim()}
+                  className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCreatingProfile ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <svg
+                        aria-hidden="true"
+                        className="inline w-4 h-4 animate-spin"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M12 4V1L8 5l1.41 1.41L11 4.17V15l2.59-2.59L17 11l-6 6z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                      Creating...
+                    </div>
+                  ) : (
+                    "Create Profile"
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="text-center text-gray-500 text-xs mt-4 space-y-1">
+              {userEmail && (
+                <div>Email: {userEmail}</div>
+              )}
+              <div>Your wallet address: {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "N/A"}</div>
+            </div>
+          </div>
         </div>
       )}
     </div>
