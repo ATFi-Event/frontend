@@ -183,15 +183,15 @@ function CustomDropdown({ isOpen, onClose, user, logout }: CustomDropdownProps) 
                 <h3 className="font-semibold text-white">
                   <div className="animate-pulse bg-gray-600 h-5 w-32 rounded mb-2"></div>
                 </h3>
-                <p className="text-sm text-gray-400">
+                <div className="text-sm text-gray-400">
                   <div className="animate-pulse bg-gray-600 h-4 w-24 rounded mb-1"></div>
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
                   <div className="animate-pulse bg-gray-600 h-3 w-20 rounded"></div>
-                </p>
-                <p className="text-xs text-gray-500 font-mono">
+                </div>
+                <div className="text-xs text-gray-500 font-mono">
                   <div className="animate-pulse bg-gray-600 h-3 w-full rounded"></div>
-                </p>
+                </div>
               </>
             ) : (
               <>
@@ -315,7 +315,7 @@ export default function Navbar({
     ? "bg-gradient-to-b from-[#14202c] to-[#131517] shadow-lg border-b border-gray-600 transition duration-200 ease-out"
     : create
     ? "bg-transparent shadow-none border-b border-transparent"
-    : "bg-gradient-to-b from-[#14202c] to-[#131517] border-b border-[#131517]";
+    : "bg-gradient-to-b from-[#14202c] to-[#131517] border-b border-gray-600";
 
   return (
     <section
@@ -369,7 +369,7 @@ export default function Navbar({
         {/* Create Events Button */}
         {authenticated && (
           <Link href="/create">
-            <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105 text-sm font-medium">
+            <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-lg transition-all text-sm font-medium">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-current">
                 <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
               </svg>

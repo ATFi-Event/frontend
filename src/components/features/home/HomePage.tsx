@@ -6,6 +6,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { apiService, Event } from "@/utils/api";
 import { usePrivy } from "@privy-io/react-auth";
+import { handleMouseMove } from "@/utils/handleInput";
+import CopyButton from "@/components/ui/CopyButton";
 
 // Custom SVG Icons
 const SearchIcon = () => (
@@ -56,6 +58,7 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
+const MAX_SHIFT = 15;
 
 export default function HomePage() {
   const { authenticated, user } = usePrivy();
@@ -64,6 +67,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<'upcoming' | 'past'>('upcoming');
+  const [position, setPosition] = useState({ x: 0, y: 0 });
 
   // Handle image errors gracefully
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -100,6 +104,17 @@ export default function HomePage() {
     loadEvents();
   }, []);
 
+  // Mouse tracking for interactive background
+  useEffect(() => {
+    const listener = (event: MouseEvent) =>
+      handleMouseMove(event, setPosition, MAX_SHIFT);
+
+    window.addEventListener("mousemove", listener);
+    return () => {
+      window.removeEventListener("mousemove", listener);
+    };
+  }, []);
+
   const filteredEvents = (events || []).filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -129,32 +144,52 @@ export default function HomePage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "LIVE":
-        return "bg-green-100 text-green-800";
+        return "bg-green-500/20 text-green-300 border-green-500/30";
       case "REGISTRATION_OPEN":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-500/20 text-blue-300 border-blue-500/30";
       case "REGISTRATION_CLOSED":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30";
       case "SETTLED":
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500/20 text-gray-300 border-gray-500/30";
       case "VOIDED":
-        return "bg-red-100 text-red-800";
+        return "bg-red-500/20 text-red-300 border-red-500/30";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-500/20 text-gray-300 border-gray-500/30";
     }
   };
 
   return (
     <>
-      <section className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
-        {/* Navbar */}
-        <Navbar active="home" />
+      <section className="min-h-screen bg-[#131517] relative overflow-hidden">
+        {/* Animated Background */}
+        <div
+          className="absolute top-0 left-0 w-full h-full light-orb z-0"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px)`,
+          }}
+        >
+          <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl -top-20 -left-20 animate-pulse-slow"></div>
+          <div className="absolute w-[400px] h-[400px] bg-pink-500/10 rounded-full blur-3xl bottom-20 right-10 animate-pulse-slow delay-500"></div>
+        </div>
+
+        <div className="relative z-10">
+          {/* Navbar */}
+          <Navbar active="home" />
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* Header with Search and Filter */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-            <h1 className="text-4xl font-bold text-white">Home</h1>
+          <div className="text-center mb-8">
+            <h1 className="text-base text-white mb-2">HOME</h1>
+            <div>
+              <h1 className="text-5xl font-medium text-white">Discover Events</h1>
+              <h2 className="text-3xl font-medium bg-gradient-to-r from-blue-500 via-pink-500 to-orange-500 bg-clip-text text-transparent leading-tight">
+                Find your next experience
+              </h2>
+            </div>
+          </div>
 
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
               {/* Search Input */}
               <div className="relative">
@@ -163,7 +198,7 @@ export default function HomePage() {
                   placeholder="Search events..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="px-4 py-2 pl-10 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 w-full sm:w-64"
+                  className="px-4 py-2 pl-10 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-64"
                 />
                 <span className="absolute left-3 top-2.5 text-gray-300">
                   <SearchIcon />
@@ -176,7 +211,7 @@ export default function HomePage() {
                   onClick={() => setStatusFilter('upcoming')}
                   className={`px-4 py-2 rounded-md transition-all ${
                     statusFilter === 'upcoming'
-                      ? 'bg-purple-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:text-white'
                   }`}
                 >
@@ -186,7 +221,7 @@ export default function HomePage() {
                   onClick={() => setStatusFilter('past')}
                   className={`px-4 py-2 rounded-md transition-all ${
                     statusFilter === 'past'
-                      ? 'bg-purple-600 text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'text-gray-300 hover:text-white'
                   }`}
                 >
@@ -233,10 +268,10 @@ export default function HomePage() {
                   const isOrganizer = user?.wallet?.address?.toLowerCase() === event.organizer_address?.toLowerCase();
 
                   return (
-                    <div key={event.event_id} className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 overflow-hidden hover:border-purple-500/50 transition-all duration-300">
+                    <div key={event.event_id} className="bg-white/5 backdrop-blur-lg rounded-3xl border border-white/10 overflow-hidden hover:border-white/20 transition-all duration-300">
                       <div className="flex flex-col md:flex-row">
                         {/* Event Date Card */}
-                        <div className="md:w-48 p-6 bg-gradient-to-br from-purple-600 to-pink-600 flex flex-col items-center justify-center text-white">
+                        <div className="md:w-48 p-6 bg-gradient-to-br from-blue-500 via-pink-500 to-orange-500 flex flex-col items-center justify-center text-white">
                           <div className="text-3xl font-bold">
                             {eventDate.getDate()}
                           </div>
@@ -254,11 +289,14 @@ export default function HomePage() {
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
                                 <h3 className="text-2xl font-bold text-white">{event.title}</h3>
-                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(event.status)}`}>
+                                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-xl border ${getStatusColor(event.status)}`}>
+                                  <div className={`w-2 h-2 rounded-full ${
+                                    event.status === 'LIVE' ? 'bg-green-400 animate-pulse' : 'bg-current'
+                                  }`}></div>
                                   {event.status.replace('_', ' ')}
                                 </span>
                                 {isOrganizer && (
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-500/20 text-amber-300 border border-amber-500/30">
                                     <span className="mr-1">
                                       <VerifiedIcon />
                                     </span>
@@ -267,11 +305,11 @@ export default function HomePage() {
                                 )}
                               </div>
 
-                              <p className="text-gray-300 mb-3 line-clamp-2">
+                              <p className="text-gray-200 mb-3 line-clamp-2">
                                 {event.description || "No description available for this event."}
                               </p>
 
-                              <div className="flex flex-wrap gap-4 text-sm text-gray-400">
+                              <div className="flex flex-wrap gap-4 text-sm text-gray-300">
                                 <div className="flex items-center gap-1">
                                   <ScheduleIcon />
                                   <span>{formatEventTime(event.event_date)}</span>
@@ -283,6 +321,13 @@ export default function HomePage() {
                                 <div className="flex items-center gap-1">
                                   <WalletIcon />
                                   <span>{(parseInt(event.stake_amount) / 1000000).toFixed(2)} USDC</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs">Organizer:</span>
+                                  <span className="text-white font-mono text-sm bg-black/20 px-2 py-1 rounded">
+                                    {event.organizer_address ? `${event.organizer_address.slice(0, 6)}...${event.organizer_address.slice(-4)}` : 'Unknown'}
+                                  </span>
+                                  {event.organizer_address && <CopyButton textToCopy={event.organizer_address} />}
                                 </div>
                               </div>
                             </div>
@@ -305,7 +350,7 @@ export default function HomePage() {
                           {/* Action Buttons */}
                           <div className="flex gap-3">
                             <Link href={`/event/${event.event_id}`}>
-                              <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all transform hover:scale-105">
+                              <button className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center">
                                 View Details
                                 <ArrowRightIcon />
                               </button>
@@ -313,7 +358,7 @@ export default function HomePage() {
 
                             {isOrganizer && (
                               <Link href={`/event/manage/${event.event_id}`}>
-                                <button className="flex items-center gap-2 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all border border-white/20">
+                                <button className="text-white bg-white/10 hover:bg-white hover:text-gray-900 font-normal rounded-full text-sm px-3 py-1 transition duration-300 ease-in-out">
                                   <SettingsIcon />
                                   Manage
                                 </button>
@@ -336,7 +381,8 @@ export default function HomePage() {
             </div>
           )}
         </div>
-      </section>
+      </div>
+    </section>
     </>
   );
 }

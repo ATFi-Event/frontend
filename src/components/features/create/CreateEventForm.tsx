@@ -12,14 +12,7 @@ interface CreateEventData {
   title: string;
   description: string;
   image_url?: string;
-  organizer_address?: string;
-  stake_amount: string;
-  max_participant: number;
-  registration_deadline: number;
-  event_date: number;
-  location?: string;
-  vault_address?: string;
-  status: string;
+  organizer_address: string;
 }
 
 // Custom SVG Components
@@ -209,36 +202,33 @@ export default function CreateEventForm() {
       // Step 1: Create event vault on blockchain
       setBlockchainStep('Creating event vault on blockchain...');
 
-      const vaultResult = await web3Service.createEventVault(
+      const vaultResult = await web3Service.createEventATFi(
         formData.stakeAmount,
-        formData.maxParticipants,
         registrationDeadline,
-        startTimestamp
+        startTimestamp,
+        formData.maxParticipants
       );
 
       setCurrentStep(2);
       setBlockchainStep('Blockchain transaction confirmed! Creating event metadata...');
 
-      // Step 2: Create event metadata in backend with vault info
-      const eventData: CreateEventData = {
+      // Wait a few seconds for indexer to process the on-chain data
+      console.log('Waiting for indexer to process on-chain data...');
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second wait
+
+      // Step 2: Create event metadata in backend (only metadata needed, chain data handled by indexer)
+      const eventData = {
         event_id: vaultResult.eventId,
         title: formData.title,
-        description: formData.description,
-        image_url: formData.imageUrl || undefined,
-        organizer_address: user.wallet.address,
-        stake_amount: (parseFloat(formData.stakeAmount) * 1000000).toString(), // Convert to 6 decimals
-        max_participant: formData.maxParticipants,
-        registration_deadline: registrationDeadline,
-        event_date: startTimestamp,
-        location: formData.location,
-        vault_address: vaultResult.vaultAddress,
-        status: "REGISTRATION_OPEN"
+        description: formData.description || "",
+        image_url: formData.imageUrl || "",
+        organizer_address: user.wallet.address
       };
 
       const createdEvent = await apiService.createEvent(eventData);
       setCreatedEventData({
         ...createdEvent,
-        vaultAddress: vaultResult.vaultAddress,
+        vaultAddress: "", // Vault address will be determined later
         txHash: vaultResult.txHash,
         blockchainEventId: vaultResult.eventId
       });

@@ -245,58 +245,180 @@ export class Web3Service {
     }
   }
 
-  async createEventVault(
+  async createEventATFi(
     stakeAmount: string,
-    maxParticipants: number,
     registrationDeadline: number,
-    eventDate: number
-  ): Promise<{ vaultAddress: string; eventId: number; txHash: string }> {
-    if (!window.ethereum || !this.state.address) {
+    eventDate: number,
+    maxParticipant: number
+  ): Promise<{ eventId: number; txHash: string }> {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed')
+    }
+
+    // Check if connected address matches organizer or use provided organizer
+    const connectedAddress = await this.connectWallet();
+    if (!connectedAddress) {
       throw new Error('Wallet not connected')
     }
 
     try {
-      // Convert parameters to contract format
-      const stakeAmountWei = (parseFloat(stakeAmount) * 1000000).toString(16)
-      const maxParticipantsHex = maxParticipants.toString(16).padStart(64, '0')
-      const deadlineHex = registrationDeadline.toString(16).padStart(64, '0')
-      const eventDateHex = eventDate.toString(16).padStart(64, '0')
+      // Import the contract utilities
+      const { encodeCreateEventCalldata } = await import('./contracts/abi');
+      const factoryConfig = await import('./contracts/factory');
+      const CURRENT_NETWORK = factoryConfig.CURRENT_NETWORK;
+      const CONTRACT_ADDRESSES = factoryConfig.CONTRACT_ADDRESSES;
 
-      // Example factory contract address - replace with your actual factory contract
-      const factoryAddress = '0x1234567890123456789012345678901234567890' // Replace with actual factory contract
+      // Debug: Check if contract configuration is loaded correctly
+      console.log('Debug: CURRENT_NETWORK:', CURRENT_NETWORK);
+      console.log('Debug: CONTRACT_ADDRESSES:', CONTRACT_ADDRESSES);
+      console.log('Debug: CONTRACT_ADDRESSES[CURRENT_NETWORK]:', CONTRACT_ADDRESSES[CURRENT_NETWORK]);
 
-      // Function signature for createVault(uint256,uint256,uint256,uint256)
-      // This would need to match your actual smart contract ABI
-      const functionSignature = '0xabcd1234' // Replace with actual function signature
+      // Validate network configuration
+      if (!CONTRACT_ADDRESSES[CURRENT_NETWORK]) {
+        throw new Error(`Network ${CURRENT_NETWORK} is not configured. Available networks: ${Object.keys(CONTRACT_ADDRESSES).join(', ')}`);
+      }
 
-      // Create calldata
-      const stakeAmountPadded = `0x${stakeAmountWei.padStart(64, '0')}`
-      const data = functionSignature + stakeAmountPadded.slice(2) + maxParticipantsHex + deadlineHex + eventDateHex
+      if (!CONTRACT_ADDRESSES[CURRENT_NETWORK].FACTORY_ATFI) {
+        throw new Error(`Factory ATFi contract address is not configured for network ${CURRENT_NETWORK}`);
+      }
 
-      // Send transaction to create vault
-      const txHash = await this.sendTransaction(factoryAddress, data)
+      // Convert stake amount to USDC smallest unit (6 decimals)
+      const stakeAmountWei = (parseFloat(stakeAmount) * 1000000).toString();
 
-      // In a real implementation, you would:
-      // 1. Wait for transaction confirmation
-      // 2. Parse the transaction logs or return value to get vault address and event ID
-      // For now, we'll simulate this with a placeholder implementation
+      // Encode the function call data with correct parameter order
+      const calldata = encodeCreateEventCalldata(
+        stakeAmountWei,
+        registrationDeadline,
+        eventDate,
+        maxParticipant
+      );
 
-      // Simulate getting vault address and event ID from transaction receipt
-      // In reality, you'd parse the event logs from the transaction receipt
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate blockchain confirmation time
+      // Get factory contract address
+      const factoryAddress = CONTRACT_ADDRESSES[CURRENT_NETWORK].FACTORY_ATFI;
 
-      const eventId = Math.floor(Math.random() * 1000000) // Simulated event ID
-      const vaultAddress = `0x${Math.random().toString(16).substr(2, 40)}` // Simulated vault address
+      // Send transaction to factory contract
+      const txHash = await this.sendTransaction(factoryAddress, calldata);
+
+      // Wait for transaction confirmation and get receipt
+      const receipt = await this.waitForTransaction(txHash);
+
+      // Parse VaultCreated event to get eventId
+      const eventId = this.parseEventIdFromReceipt(receipt);
+
+      if (!eventId) {
+        throw new Error('Failed to parse event ID from transaction receipt');
+      }
 
       return {
-        vaultAddress,
         eventId,
         txHash
-      }
+      };
     } catch (error) {
-      console.error('Error creating event vault:', error)
-      throw new Error(`Event vault creation failed: ${error}`)
+      console.error('Error creating event ATFi:', error);
+      throw new Error(`Event creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  private async waitForTransaction(txHash: string): Promise<any> {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed');
+    }
+
+    let receipt = null;
+    while (!receipt) {
+      try {
+        receipt = await window.ethereum.request({
+          method: 'eth_getTransactionReceipt',
+          params: [txHash],
+        });
+
+        if (!receipt) {
+          // Wait 2 seconds before checking again
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      } catch (error) {
+        throw new Error(`Failed to get transaction receipt: ${error}`);
+      }
+    }
+    return receipt;
+  }
+
+  private async getTransactionReceipt(txHash: string): Promise<any> {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed');
+    }
+
+    try {
+      const receipt = await window.ethereum.request({
+        method: 'eth_getTransactionReceipt',
+        params: [txHash],
+      });
+      return receipt;
+    } catch (error) {
+      throw new Error(`Failed to get transaction receipt: ${error}`);
+    }
+  }
+
+  private parseEventIdFromReceipt(receipt: any): number | null {
+    if (!receipt || !receipt.logs) {
+      console.error('No logs found in receipt');
+      return null;
+    }
+
+    console.log('Parsing receipt logs:', receipt.logs);
+
+    // The VaultCreated event signature: VaultCreated(uint256,address,address,uint256,uint256,uint256,uint256)
+    // The keccak256 hash of this signature is needed for the topic
+    // For now, let's look for logs that have the right structure
+
+    for (const log of receipt.logs) {
+      console.log('Processing log:', {
+        address: log.address,
+        topics: log.topics,
+        data: log.data
+      });
+
+      // Check if this is a VaultCreated event
+      // The first indexed parameter (eventId) should be in topics[1]
+      if (log.topics && log.topics.length >= 2) {
+        // topics[0] is the event signature hash
+        // topics[1] should be the eventId (indexed)
+        // topics[2] should be the vault address (indexed)
+        // topics[3] should be the organizer address (indexed)
+
+        const eventIdHex = log.topics[1];
+        const eventId = parseInt(eventIdHex, 16);
+
+        console.log('Found eventId:', eventId);
+
+        if (eventId && eventId > 0) {
+          return eventId;
+        }
+      }
+
+      // If eventId is not indexed, try to parse it from the data field
+      if (log.data) {
+        try {
+          // Remove 0x prefix
+          const data = log.data.slice(2);
+
+          // The first parameter in the data should be the eventId (32 bytes = 64 hex chars)
+          const eventIdHex = data.slice(0, 64);
+          const eventId = parseInt(eventIdHex, 16);
+
+          console.log('Parsed eventId from data:', eventId);
+
+          if (eventId && eventId > 0) {
+            return eventId;
+          }
+        } catch (error) {
+          console.error('Error parsing log data:', error);
+        }
+      }
+    }
+
+    console.error('VaultCreated event not found in receipt logs');
+    return null;
   }
 
   setupEventListeners(callbacks: {
