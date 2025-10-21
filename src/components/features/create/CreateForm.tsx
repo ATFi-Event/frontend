@@ -4,9 +4,10 @@ import Image from "next/image";
 import CounterNumber from "./CounterNumber";
 import { useState, useEffect } from "react";
 import Navbar from "@/components/organism/Navbar";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useSendTransaction } from "@privy-io/react-auth";
 import { handleMouseMove } from "@/utils/handleInput";
 import CopyButton from "@/components/ui/CopyButton";
+import WalletService from "@/utils/walletService";
 
 const MAX_SHIFT = 15;
 
@@ -23,6 +24,7 @@ const todayFormatted = formatDateTimeLocal(new Date());
 
 export default function CreateForm() {
   const { authenticated, user } = usePrivy();
+  const { sendTransaction } = useSendTransaction();
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -146,26 +148,140 @@ export default function CreateForm() {
         throw new Error("Event date must be after registration deadline");
       }
 
-      // Step 1: Call FactoryATFi contract to get event_id
-      const web3Service = new Web3Service();
-
-      if (!user?.wallet?.address) {
-        throw new Error("Wallet not connected. Please connect your wallet first.");
+      // Get preferred wallet (Gmail wallet first, then external wallet as fallback)
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+      const preferredWallet = WalletService.getPreferredWallet(user);
+      if (!preferredWallet) {
+        throw new Error("No wallet available for transaction");
       }
 
-      const contractResult = await web3Service.createEventATFi(
-        stakeAmount,
+      console.log(`Using wallet for event creation: ${preferredWallet.name} (${preferredWallet.address})`);
+      console.log(`Wallet type: ${preferredWallet.type === 'gmail' ? 'Gmail-linked wallet' : 'External wallet'}`);
+
+      // Step 1: Create event vault on blockchain using Privy
+      // Import the contract utilities to get calldata
+      const { encodeCreateEventCalldata } = await import('@/utils/contracts/abi');
+      const factoryConfig = await import('@/utils/contracts/factory');
+      const CURRENT_NETWORK = factoryConfig.CURRENT_NETWORK;
+      const CONTRACT_ADDRESSES = factoryConfig.CONTRACT_ADDRESSES;
+
+      // Validate network configuration
+      if (!CONTRACT_ADDRESSES[CURRENT_NETWORK] || !CONTRACT_ADDRESSES[CURRENT_NETWORK].FACTORY_ATFI) {
+        throw new Error(`Factory ATFi contract not configured for network ${CURRENT_NETWORK}`);
+      }
+
+      // Convert stake amount to USDC smallest unit (6 decimals)
+      const stakeAmountWei = (parseFloat(stakeAmount) * 1000000).toString();
+
+      // Encode the function call data
+      const calldata = encodeCreateEventCalldata(
+        stakeAmountWei,
         registrationDeadlineTimestamp,
         eventDateTimestamp,
         maxParticipants
       );
+
+      // Get factory contract address
+      const factoryAddress = CONTRACT_ADDRESSES[CURRENT_NETWORK].FACTORY_ATFI;
+
+      // Send transaction using Privy's embedded wallet
+      const txHash = await sendTransaction(
+        {
+          to: factoryAddress,
+          data: calldata,
+        },
+        {
+          address: preferredWallet.address // Use the preferred wallet for signing
+        }
+      );
+
+      console.log('Transaction sent with hash:', txHash);
+
+      // Wait for transaction confirmation and get event ID from transaction result
+      console.log("Waiting for transaction confirmation...");
+
+      // Import utilities to parse transaction receipt
+      // Use public RPC provider for all cases since we're only doing read operations
+      const { ethers } = await import('ethers');
+      const provider = new ethers.JsonRpcProvider("https://sepolia.base.org");
+
+      let eventId: number | undefined;
+      let maxRetries = 30; // Retry for up to 30 seconds
+
+      while (maxRetries > 0) {
+        try {
+          // Get transaction receipt
+          const receipt = await provider.getTransactionReceipt(txHash.hash);
+
+          if (receipt && receipt.status === 1) {
+            console.log("Transaction confirmed, getting event ID from transaction result...");
+
+            // Get the transaction to access the return value
+            const transaction = await provider.getTransaction(txHash.hash);
+            if (transaction) {
+              // For contract creation/function calls, we need to decode the return value
+              // The createEvent function returns the eventId as uint256
+
+              // Create a call to the factory to get the latest event ID
+              const factoryConfig = await import('@/utils/contracts/factory');
+              const CURRENT_NETWORK = factoryConfig.CURRENT_NETWORK;
+              const CONTRACT_ADDRESSES = factoryConfig.CONTRACT_ADDRESSES;
+              const factoryAddress = CONTRACT_ADDRESSES[CURRENT_NETWORK].FACTORY_ATFI;
+
+              // Call the view function to get the current eventIdCounter (which would be the latest event ID + 1)
+              const { ethers } = await import('ethers');
+              const factoryAbi = [
+                "function eventIdCounter() view returns (uint256)"
+              ];
+              const factoryContract = new ethers.Contract(factoryAddress, factoryAbi, provider);
+
+              const currentCounter = await factoryContract.eventIdCounter();
+              eventId = Number(currentCounter) - 1; // The latest event ID is counter - 1
+
+              console.log("Retrieved event ID from factory counter:", eventId);
+            }
+
+            if (eventId) {
+              break; // Found the event ID, exit the loop
+            } else {
+              throw new Error("Could not retrieve event ID from transaction result");
+            }
+          } else if (receipt && receipt.status === 0) {
+            throw new Error("Transaction failed");
+          }
+
+          // Transaction not found yet, wait and retry
+          console.log("Transaction not yet confirmed, retrying in 1 second...");
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          maxRetries--;
+
+        } catch (error) {
+          if (maxRetries <= 0) {
+            throw new Error(`Failed to get transaction receipt after 30 seconds: ${error}`);
+          }
+          console.log("Error getting transaction receipt, retrying...", error);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          maxRetries--;
+        }
+      }
+
+      if (!eventId) {
+        throw new Error("Failed to retrieve event ID from transaction");
+      }
+
+      const contractResult = {
+        eventId,
+        txHash
+      };
 
       console.log("Step 1: Contract call completed, event ID:", contractResult.eventId);
       setEventId(contractResult.eventId);
 
       // Wait for indexer to process the on-chain data
       console.log("Waiting for indexer to process on-chain data...");
-      await new Promise(resolve => setTimeout(resolve, 10000)); // 5 second wait
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 5 second wait
 
       // Step 2: Create event metadata in backend with the event_id
       try {
@@ -173,7 +289,7 @@ export default function CreateForm() {
           event_id: contractResult.eventId,
           title: title.trim(),
           description: description.trim(),
-          image_url: imageUrl || null,
+          image_url: imageUrl || undefined,
           organizer_address: user?.wallet?.address || "",
         };
 

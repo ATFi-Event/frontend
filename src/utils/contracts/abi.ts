@@ -2,6 +2,8 @@
 
 export const FUNCTION_SELECTORS = {
   CREATE_EVENT: "0xc0e319c6",
+  USDC_APPROVE: "0x095ea7b3",
+  VAULT_DEPOSIT: "0xd0e30db0",
 } as const;
 
 export const EVENT_TOPICS = {
@@ -57,4 +59,22 @@ export const encodeCreateEventCalldata = (
   const maxParticipantHex = maxParticipant.toString(16).padStart(64, "0");
 
   return `0x${selector}${stakeAmountHex}${registrationDeadlineHex}${eventDateHex}${maxParticipantHex}`;
+};
+
+// Encode USDC approval function call
+export const encodeApproveUSDC = (spender: string, amount: string) => {
+  const selector = FUNCTION_SELECTORS.USDC_APPROVE.slice(2);
+
+  // Pad spender address to 32 bytes
+  const spenderHex = spender.slice(2).padStart(64, "0");
+
+  // Pad amount to 32 bytes
+  const amountHex = BigInt(amount).toString(16).padStart(64, "0");
+
+  return `0x${selector}${spenderHex}${amountHex}`;
+};
+
+// Encode vault deposit function call (no parameters needed)
+export const encodeDepositToVault = () => {
+  return FUNCTION_SELECTORS.VAULT_DEPOSIT;
 };

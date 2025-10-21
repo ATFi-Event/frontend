@@ -39,6 +39,7 @@ export default function FirstTimeUserModal({ isOpen, onClose, onSuccess }: First
   };
 
   const userEmail = getUserEmail();
+  console.log("email" + userEmail);
   const userWalletAddress = getUserWalletAddress();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -66,7 +67,7 @@ export default function FirstTimeUserModal({ isOpen, onClose, onSuccess }: First
         body: JSON.stringify({
           wallet_address: userWalletAddress,
           name: name.trim(),
-          email: String(userEmail),
+          email: userEmail || null, // Send null instead of empty string
         }),
       });
 

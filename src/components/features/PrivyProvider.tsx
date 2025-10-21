@@ -27,6 +27,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
             createOnLogin: "users-without-wallets",
           },
         },
+        // Configure default chain to Base Sepolia
+        defaultChain: {
+          id: 84532, // Base Sepolia Chain ID
+          name: "Base Sepolia",
+          nativeCurrency: {
+            name: "Ether",
+            symbol: "ETH",
+            decimals: 18
+          },
+          rpcUrls: {
+            default: {
+              http: ["https://sepolia.base.org"]
+            }
+          },
+        },
       }}
     >
       {children}

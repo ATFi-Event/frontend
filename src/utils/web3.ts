@@ -13,6 +13,7 @@ export interface Web3State {
 }
 
 export class Web3Service {
+  private provider: any = null;
   private state: Web3State = {
     isConnected: false,
     address: null,
@@ -25,16 +26,24 @@ export class Web3Service {
     return { ...this.state }
   }
 
+  // Set the wallet provider (Privy embedded wallet or external provider)
+  setProvider(provider: any) {
+    this.provider = provider;
+  }
+
   async connectWallet(): Promise<string> {
-    if (!window.ethereum) {
-      throw new Error('MetaMask is not installed')
+    // Use the set provider or fallback to window.ethereum for backward compatibility
+    const provider = this.provider || window.ethereum;
+
+    if (!provider) {
+      throw new Error('No wallet provider available')
     }
 
     try {
       this.state.isConnecting = true
       this.state.error = null
 
-      const accounts = await window.ethereum.request({
+      const accounts = await provider.request({
         method: 'eth_requestAccounts',
       })
 
@@ -43,7 +52,7 @@ export class Web3Service {
       }
 
       const account = accounts[0]
-      const chainId = await window.ethereum.request({
+      const chainId = await provider.request({
         method: 'eth_chainId',
       })
 
@@ -68,27 +77,31 @@ export class Web3Service {
   }
 
   async switchChain(chainId: number): Promise<void> {
-    if (!window.ethereum) {
-      throw new Error('MetaMask is not installed')
+    const provider = this.provider || window.ethereum;
+
+    if (!provider) {
+      throw new Error('No wallet provider available')
     }
 
     try {
-      await window.ethereum.request({
+      await provider.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: `0x${chainId.toString(16)}` }],
       })
     } catch (error: any) {
-      // This error code indicates that the chain has not been added to MetaMask
+      // This error code indicates that the chain has not been added to the wallet
       if (error.code === 4902) {
         // You could add chain configuration here if needed
-        throw new Error('Chain not found in MetaMask')
+        throw new Error('Chain not found in wallet')
       }
       throw error
     }
   }
 
   async sendTransaction(to: string, data: string, value: string = '0x0'): Promise<string> {
-    if (!window.ethereum || !this.state.address) {
+    const provider = this.provider || window.ethereum;
+
+    if (!provider || !this.state.address) {
       throw new Error('Wallet not connected')
     }
 
@@ -100,7 +113,7 @@ export class Web3Service {
         value,
       }
 
-      const txHash = await window.ethereum.request({
+      const txHash = await provider.request({
         method: 'eth_sendTransaction',
         params: [transactionParams],
       })
@@ -249,16 +262,24 @@ export class Web3Service {
     stakeAmount: string,
     registrationDeadline: number,
     eventDate: number,
-    maxParticipant: number
+    maxParticipant: number,
+    preferredWalletAddress?: string
   ): Promise<{ eventId: number; txHash: string }> {
-    if (!window.ethereum) {
-      throw new Error('MetaMask is not installed')
+    const provider = this.provider || window.ethereum;
+
+    if (!provider) {
+      throw new Error('No wallet provider available')
     }
 
     // Check if connected address matches organizer or use provided organizer
     const connectedAddress = await this.connectWallet();
     if (!connectedAddress) {
       throw new Error('Wallet not connected')
+    }
+
+    // If preferred wallet address is provided, ensure it matches the connected address
+    if (preferredWalletAddress && connectedAddress.toLowerCase() !== preferredWalletAddress.toLowerCase()) {
+      console.warn(`Warning: Connected wallet (${connectedAddress}) does not match preferred wallet (${preferredWalletAddress}). Using connected wallet.`);
     }
 
     try {

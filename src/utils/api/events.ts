@@ -82,3 +82,46 @@ export const getAllEvents = async (): Promise<{ events: EventMetadataResponse[] 
     throw error;
   }
 };
+
+// Participant registration API
+export interface RegisterUserRequest {
+  event_id: number;
+  user_address: string;
+  transaction_hash: string;
+  deposit_amount: string;
+}
+
+export interface RegisterUserResponse {
+  success: boolean;
+  message: string;
+  participant?: {
+    id: string;
+    event_id: number;
+    user_address: string;
+    deposit_amount: string;
+    transaction_hash: string;
+    created_at: string;
+  };
+}
+
+export const registerUser = async (data: RegisterUserRequest): Promise<RegisterUserResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/events/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to register user: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error registering user:", error);
+    throw error;
+  }
+};

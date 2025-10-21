@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePrivy } from "@privy-io/react-auth";
 import { handleMouseMove } from "@/utils/handleInput";
 import CopyButton from "@/components/ui/CopyButton";
+import DepositModal from "./DepositModal";
 
 const MAX_SHIFT = 15;
 
@@ -39,21 +40,27 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [showQRModal, setShowQRModal] = useState(false);
   const [userIsAttended, setUserIsAttended] = useState(false);
+  const [showDepositModal, setShowDepositModal] = useState(false);
+
+  const handleDepositSuccess = () => {
+    // Refresh event data to show updated participant count
+    loadEvent();
+  };
+
+  const loadEvent = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:8080/api/v1/events/${eventId}`);
+      const data = await response.json();
+      setEventData(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load event");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadEvent = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`http://localhost:8080/api/v1/events/${eventId}`);
-        const data = await response.json();
-        setEventData(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load event");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (eventId && eventId !== 'undefined') {
       loadEvent();
     }
@@ -264,7 +271,10 @@ export default function EventDetail({ eventId }: { eventId: string }) {
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex flex-wrap gap-4 justify-center">
             {event.status === 'REGISTRATION_OPEN' && (
-              <button className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center">
+              <button
+                onClick={() => setShowDepositModal(true)}
+                className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
+              >
                 Deposit to Join
               </button>
             )}
@@ -436,6 +446,21 @@ export default function EventDetail({ eventId }: { eventId: string }) {
           </div>
         )}
       </div>
+
+      {/* Deposit Modal */}
+      {eventData && (
+        <DepositModal
+          isOpen={showDepositModal}
+          onClose={() => setShowDepositModal(false)}
+          onSuccess={handleDepositSuccess}
+          eventData={{
+            event_id: eventData.event.event_id,
+            vault_address: eventData.event.vault_address,
+            stake_amount: eventData.event.stake_amount,
+            title: eventData.event.title
+          }}
+        />
+      )}
     </section>
   );
 }
