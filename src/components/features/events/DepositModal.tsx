@@ -201,21 +201,42 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
     if (!preferredWallet) return;
 
     try {
+      // Use the same approach as the dropdown profile - fetch from backend API
+      const response = await fetch(`http://localhost:8080/api/v1/profiles/${preferredWallet.address}`);
+      if (response.ok) {
+        const profileData = await response.json();
+        setUsdcBalance(profileData.balance || '0');
+        console.log(`💰 Balance check from profile API for ${preferredWallet.address}: ${profileData.balance} USDC`);
+      } else {
+        console.warn('Profile not found, trying blockchain fallback...');
+        // Fallback to blockchain balance check
+        await checkBalanceFromBlockchain(preferredWallet);
+      }
+    } catch (error) {
+      console.error('Failed to check balance from profile API:', error);
+      // Final fallback to blockchain balance check
+      await checkBalanceFromBlockchain(preferredWallet);
+    }
+  };
+
+  const checkBalanceFromBlockchain = async (preferredWallet: any) => {
+    try {
       // Import web3Service dynamically to avoid server-side rendering issues
       const { Web3Service } = await import('@/utils/web3');
       const web3Service = new Web3Service();
       const balance = await web3Service.getUSDCBalance(preferredWallet.address);
       setUsdcBalance(balance);
-      console.log(`💰 Balance check for ${preferredWallet.address}: ${balance} USDC`);
+      console.log(`💰 Blockchain balance check for ${preferredWallet.address}: ${balance} USDC`);
     } catch (error) {
-      console.error('Failed to check balance:', error);
-      // Fallback to WalletService if web3Service fails
+      console.error('Blockchain balance check failed:', error);
+      // Final fallback to WalletService
       try {
         const balance = await WalletService.getUSDCBalance(preferredWallet.address);
         setUsdcBalance(balance);
-        console.log(`💰 Fallback balance check: ${balance} USDC`);
+        console.log(`💰 WalletService balance check: ${balance} USDC`);
       } catch (fallbackError) {
-        console.error('Fallback balance check also failed:', fallbackError);
+        console.error('All balance checks failed:', fallbackError);
+        setUsdcBalance('0'); // Set to 0 as final fallback
       }
     }
   };
@@ -231,7 +252,7 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
 
   // Convert amounts from database (which stores in USDC smallest units: 1 USDC = 1,000,000)
   const requiredBalance = parseInt(eventData.stake_amount) / 1000000;
-  const currentBalance = parseFloat(usdcBalance);
+  const currentBalance = parseFloat(usdcBalance || '0');
   const hasEnoughBalance = currentBalance >= requiredBalance;
 
   return (
