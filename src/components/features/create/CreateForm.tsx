@@ -186,7 +186,7 @@ export default function CreateForm() {
       // Get factory contract address
       const factoryAddress = CONTRACT_ADDRESSES[CURRENT_NETWORK].FACTORY_ATFI;
 
-      // Send transaction using Privy's embedded wallet
+      // Send transaction using Privy's unified sendTransaction (works for both Gmail and MetaMask)
       const txHash = await sendTransaction(
         {
           to: factoryAddress,
@@ -286,11 +286,11 @@ export default function CreateForm() {
       // Step 2: Create event metadata in backend with the event_id
       try {
         const metadataData = {
-          event_id: contractResult.eventId,
+          event_id: contractResult.eventId - 1,
           title: title.trim(),
           description: description.trim(),
           image_url: imageUrl || undefined,
-          organizer_address: user?.wallet?.address || "",
+          organizer_address: preferredWallet.address,
         };
 
         console.log("Step 2: Creating backend metadata with event_id:", contractResult.eventId);

@@ -6,6 +6,7 @@ import { encodeApproveUSDC, encodeDepositToVault } from "@/utils/contracts/abi";
 import { CONTRACT_ADDRESSES, CURRENT_NETWORK } from "@/utils/contracts/factory";
 import { registerUser } from "@/utils/api/events";
 import WalletService from "@/utils/walletService";
+import { generateParticipantQRCode } from "@/utils/qrCode";
 
 interface DepositFlowState {
   status: 'idle' | 'checking_balance' | 'approving' | 'depositing' | 'registering' | 'completed' | 'error';
@@ -37,6 +38,9 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
     message: ''
   });
   const [usdcBalance, setUsdcBalance] = useState<string>('0');
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [qrCodeLoading, setQrCodeLoading] = useState(false);
 
   const handleClose = () => {
     if (depositState.status !== 'depositing' && depositState.status !== 'approving') {
@@ -46,7 +50,30 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
         totalSteps: 3,
         message: ''
       });
+      setShowQRCode(false);
+      setQrCodeDataUrl('');
+      setQrCodeLoading(false);
       onClose();
+    }
+  };
+
+  const generateQRCode = async (eventId: number, userId: string) => {
+    try {
+      setQrCodeLoading(true);
+      const qrDataUrl = await generateParticipantQRCode(eventId, userId, {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      });
+      setQrCodeDataUrl(qrDataUrl);
+      setShowQRCode(true);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+    } finally {
+      setQrCodeLoading(false);
     }
   };
 
@@ -71,10 +98,15 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
       setDepositState({
         status: 'checking_balance',
         step: 1,
+        totalSteps: 3,
         message: 'Checking USDC balance...'
       });
 
-      const balance = await WalletService.getUSDCBalance(preferredWallet.address);
+      // Use web3Service for balance checking (compatible with Privy embedded wallets)
+      const { Web3Service } = await import('@/utils/web3');
+      const web3Service = new Web3Service();
+      const balance = await web3Service.getUSDCBalance(preferredWallet.address);
+      console.log(`💰 Balance check for deposit: ${balance} USDC`);
       const balanceNum = parseFloat(balance);
       const requiredBalance = parseInt(eventData.stake_amount) / 1000000;
 
@@ -86,6 +118,7 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
       setDepositState({
         status: 'approving',
         step: 2,
+        totalSteps: 3,
         message: 'Approving USDC for deposit...'
       });
 
@@ -108,6 +141,7 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
       setDepositState({
         status: 'depositing',
         step: 3,
+        totalSteps: 3,
         message: 'Depositing USDC to vault...'
       });
 
@@ -128,6 +162,7 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
       setDepositState({
         status: 'completed',
         step: 3,
+        totalSteps: 3,
         message: 'Deposit completed successfully!'
       });
 
@@ -136,7 +171,7 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
         await registerUser({
           event_id: eventData.event_id,
           user_address: preferredWallet.address,
-          transaction_hash: depositTxHash,
+          transaction_hash: (depositTxHash as any).hash,
           deposit_amount: eventData.stake_amount
         });
       } catch (error) {
@@ -144,16 +179,15 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
         // Don't fail the whole flow if backend registration fails
       }
 
-      setTimeout(() => {
-        onSuccess?.();
-        handleClose();
-      }, 2000);
+      // Don't auto-generate QR code - user will generate it when needed
+      // QR code can be accessed later from the event page
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setDepositState({
         status: 'error',
         step: 0,
+        totalSteps: 3,
         message: 'Deposit failed',
         error: errorMessage
       });
@@ -167,10 +201,22 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
     if (!preferredWallet) return;
 
     try {
-      const balance = await WalletService.getUSDCBalance(preferredWallet.address);
+      // Import web3Service dynamically to avoid server-side rendering issues
+      const { Web3Service } = await import('@/utils/web3');
+      const web3Service = new Web3Service();
+      const balance = await web3Service.getUSDCBalance(preferredWallet.address);
       setUsdcBalance(balance);
+      console.log(`💰 Balance check for ${preferredWallet.address}: ${balance} USDC`);
     } catch (error) {
       console.error('Failed to check balance:', error);
+      // Fallback to WalletService if web3Service fails
+      try {
+        const balance = await WalletService.getUSDCBalance(preferredWallet.address);
+        setUsdcBalance(balance);
+        console.log(`💰 Fallback balance check: ${balance} USDC`);
+      } catch (fallbackError) {
+        console.error('Fallback balance check also failed:', fallbackError);
+      }
     }
   };
 
@@ -301,47 +347,121 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
 
         {/* Success Display */}
         {depositState.status === 'completed' && (
-          <div className="mb-6 bg-green-500/20 backdrop-blur-lg border border-green-500/50 text-green-100 px-4 py-3 rounded-lg">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm">Deposit completed successfully!</span>
+          <div className="mb-6 bg-green-500/20 backdrop-blur-lg border border-green-500/50 text-green-100 px-6 py-6 rounded-lg">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <span className="text-lg font-semibold">Deposit completed successfully!</span>
+              </div>
+              <div className="text-sm text-gray-200 space-y-2">
+                <p>Your Event Check-in QR Code will be available during the event</p>
+                <p className="text-xs text-gray-300">You can access it from the event page when the event is live</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* QR Code Display */}
+        {showQRCode && (
+          <div className="mb-6">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-white mb-2">Your Check-in QR Code</h3>
+              <p className="text-sm text-gray-300">Show this QR code at the event venue for check-in</p>
+            </div>
+
+            {qrCodeLoading ? (
+              <div className="flex items-center justify-center p-8 bg-white rounded-xl">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-900 border-t-transparent mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-600">Generating QR code...</p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white p-4 rounded-xl">
+                <div className="flex justify-center mb-3">
+                  <img src={qrCodeDataUrl} alt="Event Check-in QR Code" className="w-64 h-64" />
+                </div>
+                <div className="text-center text-xs text-gray-600">
+                  <p>Event ID: {eventData.event_id}</p>
+                  <p>Wallet: {user && WalletService.getPreferredWallet(user)?.address?.slice(0, 6)}...{user && WalletService.getPreferredWallet(user)?.address?.slice(-4)}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <span className="text-xs font-medium text-blue-400">Important</span>
+              </div>
+              <ul className="text-xs text-gray-300 space-y-1">
+                <li>• Save this QR code for event check-in</li>
+                <li>• You can also access it later from the event page</li>
+                <li>• This QR code is unique to your wallet and this event</li>
+              </ul>
             </div>
           </div>
         )}
 
         {/* Action Buttons */}
         <div className="flex gap-3">
-          <button
-            onClick={handleClose}
-            className="flex-1 text-white bg-white/10 hover:bg-white/20 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all disabled:opacity-50"
-            disabled={depositState.status === 'depositing' || depositState.status === 'approving'}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleDeposit}
-            disabled={
-              !authenticated ||
-              !hasEnoughBalance ||
-              depositState.status === 'depositing' ||
-              depositState.status === 'approving' ||
-              depositState.status === 'completed'
-            }
-            className="flex-1 text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {depositState.status === 'depositing' || depositState.status === 'approving' ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                Processing...
-              </div>
-            ) : depositState.status === 'completed' ? (
-              'Completed ✓'
-            ) : (
-              'Deposit USDC'
-            )}
-          </button>
+          {!showQRCode ? (
+            <>
+              <button
+                onClick={handleClose}
+                className="flex-1 text-white bg-white/10 hover:bg-white/20 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all disabled:opacity-50"
+                disabled={depositState.status === 'depositing' || depositState.status === 'approving'}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeposit}
+                disabled={
+                  !authenticated ||
+                  !hasEnoughBalance ||
+                  depositState.status === 'depositing' ||
+                  depositState.status === 'approving' ||
+                  depositState.status === 'completed'
+                }
+                className="flex-1 text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {depositState.status === 'depositing' || depositState.status === 'approving' ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                    Processing...
+                  </div>
+                ) : depositState.status === 'completed' ? (
+                  'Close'
+                ) : (
+                  'Deposit USDC'
+                )}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(qrCodeDataUrl);
+                  // Could add a toast notification here
+                }}
+                className="flex-1 text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all"
+              >
+                Copy QR Code
+              </button>
+              <button
+                onClick={() => {
+                  onSuccess?.();
+                  handleClose();
+                }}
+                className="flex-1 text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all"
+              >
+                Done
+              </button>
+            </>
+          )}
         </div>
 
         {/* Info */}

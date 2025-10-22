@@ -13,6 +13,7 @@
     "@privy-io/react-auth": "^3.3.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.75.0",
+    "@yudiel/react-qr-scanner": "^2.4.0",
     "autoprefixer": "^10.4.20",
     "ethers": "^6.15.0",
     "flowbite": "^3.1.2",
@@ -20,6 +21,7 @@
     "lightningcss": "^1.30.2",
     "next": "15.5.4",
     "postcss": "^8.4.45",
+    "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },

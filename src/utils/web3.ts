@@ -27,8 +27,22 @@ export class Web3Service {
   }
 
   // Set the wallet provider (Privy embedded wallet or external provider)
-  setProvider(provider: any) {
+  async setProvider(provider: any) {
     this.provider = provider;
+
+    // If this is a Privy embedded wallet, extract the address and update state
+    if (provider && provider.address) {
+      this.state.address = provider.address;
+      this.state.isConnected = true;
+      this.state.error = null;
+
+      // Also try to get chainId if available
+      if (provider.chainId) {
+        this.state.chainId = typeof provider.chainId === 'string'
+          ? parseInt(provider.chainId, 16)
+          : provider.chainId;
+      }
+    }
   }
 
   async connectWallet(): Promise<string> {
@@ -148,8 +162,12 @@ export class Web3Service {
   }
 
   async getUSDCBalance(address: string): Promise<string> {
-    if (!window.ethereum) {
-      throw new Error('MetaMask is not installed')
+    // Use the embedded provider or fallback to window.ethereum
+    const provider = this.provider || window.ethereum;
+
+    if (!provider) {
+      console.warn('No wallet provider available, returning 0 balance')
+      return '0'
     }
 
     try {
@@ -166,7 +184,16 @@ export class Web3Service {
       const data = functionSignature + paddedAddress
 
       // Make the call
-      const result = await this.callContract(usdcAddress, data)
+      const result = await provider.request({
+        method: 'eth_call',
+        params: [
+          {
+            to: usdcAddress,
+            data,
+          },
+          'latest',
+        ],
+      })
 
       // Convert the result from hex to decimal (USDC has 6 decimals)
       const balanceHex = result
@@ -440,6 +467,162 @@ export class Web3Service {
 
     console.error('VaultCreated event not found in receipt logs');
     return null;
+  }
+
+  // Go Live: Call depositToYieldSource function
+  async goLive(vaultAddress: string): Promise<string> {
+    if (!window.ethereum || !this.state.address) {
+      throw new Error('Wallet not connected')
+    }
+
+    try {
+      // Import vault ABI
+      const { VAULT_FUNCTION_SIGNATURES } = await import('./contracts/vault');
+
+      // depositToYieldSource() function signature
+      const functionSignature = VAULT_FUNCTION_SIGNATURES.DEPOSIT_TO_YIELD;
+
+      // Create calldata for depositToYieldSource() - no parameters needed
+      const data = functionSignature;
+
+      const txHash = await this.sendTransaction(vaultAddress, data);
+      return txHash;
+    } catch (error) {
+      console.error('Error calling depositToYieldSource:', error);
+      throw new Error(`Go Live failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Settle Event: Call settleEvent function with attended participants
+  async settleEvent(vaultAddress: string, attendedParticipants: string[]): Promise<string> {
+    if (!window.ethereum || !this.state.address) {
+      throw new Error('Wallet not connected')
+    }
+
+    try {
+      // Import vault ABI
+      const { VAULT_FUNCTION_SIGNATURES } = await import('./contracts/vault');
+
+      // settleEvent(address[]) function signature
+      const functionSignature = VAULT_FUNCTION_SIGNATURES.SETTLE_EVENT;
+
+      // Encode the attended participants array
+      // Function signature: settleEvent(address[] calldata _attendedParticipants)
+      const data = this.encodeSettleEventData(functionSignature, attendedParticipants);
+
+      const txHash = await this.sendTransaction(vaultAddress, data);
+      return txHash;
+    } catch (error) {
+      console.error('Error calling settleEvent:', error);
+      throw new Error(`Settle Event failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Claim Reward: Call claimReward function
+  async claimReward(vaultAddress: string): Promise<string> {
+    if (!window.ethereum || !this.state.address) {
+      throw new Error('Wallet not connected')
+    }
+
+    try {
+      // Import vault ABI
+      const { VAULT_FUNCTION_SIGNATURES } = await import('./contracts/vault');
+
+      // claimReward() function signature
+      const functionSignature = VAULT_FUNCTION_SIGNATURES.CLAIM_REWARD;
+
+      // Create calldata for claimReward() - no parameters needed
+      const data = functionSignature;
+
+      const txHash = await this.sendTransaction(vaultAddress, data);
+      return txHash;
+    } catch (error) {
+      console.error('Error calling claimReward:', error);
+      throw new Error(`Claim Reward failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  // Helper function to encode settleEvent parameters
+  private encodeSettleEventData(functionSignature: string, attendedParticipants: string[]): string {
+    // Function signature: settleEvent(address[] calldata _attendedParticipants)
+    // Function selector (4 bytes) + parameters encoding
+
+    let data = functionSignature.slice(2); // Remove 0x prefix
+
+    // Encode array length (pad to 32 bytes)
+    const arrayLength = attendedParticipants.length.toString(16).padStart(64, '0');
+    data += arrayLength;
+
+    // Encode each address (pad to 32 bytes)
+    for (const address of attendedParticipants) {
+      const paddedAddress = address.slice(2).padStart(64, '0'); // Remove 0x and pad
+      data += paddedAddress;
+    }
+
+    return '0x' + data;
+  }
+
+  // Get user reward amount from vault
+  async getUserReward(vaultAddress: string, userAddress: string): Promise<string> {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed');
+    }
+
+    try {
+      // Import vault ABI
+      const { VAULT_FUNCTION_SIGNATURES } = await import('./contracts/vault');
+
+      // getUserReward(address) function signature
+      const functionSignature = VAULT_FUNCTION_SIGNATURES.USER_REWARD;
+
+      // Pad the address to 32 bytes and remove the 0x prefix
+      const paddedAddress = userAddress.slice(2).padStart(64, '0');
+
+      // Create the calldata
+      const data = functionSignature + paddedAddress;
+
+      // Make the call
+      const result = await this.callContract(vaultAddress, data);
+
+      // Convert the result from hex to decimal
+      const rewardHex = result;
+      const rewardWei = parseInt(rewardHex, 16);
+      const rewardUSDC = rewardWei / 1000000; // Convert from smallest unit to USDC
+
+      return rewardUSDC.toString();
+    } catch (error) {
+      console.error('Error getting user reward:', error);
+      return '0';
+    }
+  }
+
+  // Check if event is settled
+  async isEventSettled(vaultAddress: string): Promise<boolean> {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed');
+    }
+
+    try {
+      // Import vault ABI
+      const { VAULT_FUNCTION_SIGNATURES } = await import('./contracts/vault');
+
+      // eventSettled() function signature
+      const functionSignature = VAULT_FUNCTION_SIGNATURES.EVENT_SETTLED;
+
+      // Create the calldata (no parameters needed)
+      const data = functionSignature;
+
+      // Make the call
+      const result = await this.callContract(vaultAddress, data);
+
+      // Convert result to boolean (0 = false, 1 = true)
+      const isSettled = parseInt(result, 16) === 1;
+
+      return isSettled;
+    } catch (error) {
+      console.error('Error checking event settlement:', error);
+      return false;
+    }
   }
 
   setupEventListeners(callbacks: {

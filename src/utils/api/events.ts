@@ -125,3 +125,165 @@ export const registerUser = async (data: RegisterUserRequest): Promise<RegisterU
     throw error;
   }
 };
+
+// Participant tracking APIs
+export interface Participant {
+  id: string;
+  event_id: number;
+  user_id: string;
+  user_address: string;
+  is_attend: boolean;
+  is_claim: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CheckInRequest {
+  event_id: number;
+  user_address?: string;
+  user_id?: string;
+}
+
+export interface CheckInResponse {
+  success: boolean;
+  message: string;
+  participant?: Participant;
+}
+
+export interface ClaimRewardRequest {
+  event_id: number;
+  user_address: string;
+}
+
+export interface ClaimRewardResponse {
+  success: boolean;
+  message: string;
+  participant?: Participant;
+}
+
+export interface ParticipantQRData {
+  event_id: number;
+  user_address: string;
+  user_id?: string;
+  timestamp: number;
+}
+
+// Check in participant (scan QR code)
+export const checkInParticipant = async (data: CheckInRequest): Promise<CheckInResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/checkin`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to check in participant: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error checking in participant:", error);
+    throw error;
+  }
+};
+
+// Claim reward (update participant status)
+export const claimReward = async (data: ClaimRewardRequest): Promise<ClaimRewardResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/claim`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to claim reward: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error claiming reward:", error);
+    throw error;
+  }
+};
+
+// Get participant status
+export const getParticipantStatus = async (eventId: number, userAddress: string): Promise<{
+  participant: Participant | null;
+}> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participant/${userAddress}`);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { participant: null };
+      }
+      const errorText = await response.text();
+      throw new Error(`Failed to get participant status: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error getting participant status:", error);
+    throw error;
+  }
+};
+
+// Get all participants for an event
+export const getEventParticipants = async (eventId: string): Promise<Participant[]> => {
+  try {
+    console.log(`🔍 Fetching participants for event ${eventId} from: ${API_BASE_URL}/events/${eventId}/participants`);
+
+    // First try the dedicated participants endpoint
+    let response = await fetch(`${API_BASE_URL}/events/${eventId}/participants`);
+    console.log(`📊 API Response Status: ${response.status} ${response.statusText}`);
+
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`📋 Raw API Response Data:`, data);
+      const participants = data.participants || data || [];
+      console.log(`👥 Processed participants array:`, participants);
+      console.log(`📈 Total participants found:`, participants.length);
+      return participants;
+    }
+
+    // If participants endpoint doesn't exist (404), get event details instead
+    if (response.status === 404) {
+      console.log(`🔄 Participants endpoint not found, trying event details endpoint...`);
+      const eventResponse = await fetch(`${API_BASE_URL}/events/${eventId}`);
+
+      if (!eventResponse.ok) {
+        throw new Error(`Failed to get event details: ${eventResponse.status}`);
+      }
+
+      const eventData = await eventResponse.json();
+      console.log(`📊 Event data received:`, eventData);
+
+      const participantCount = eventData.participant_count || 0;
+      console.log(`👥 Participant count from event details: ${participantCount}`);
+
+      // Since backend doesn't provide individual participant data,
+      // we cannot show the actual participant list
+      // Return empty array and let UI handle the display appropriately
+      console.log(`⚠️ Backend doesn't provide individual participant data. Only count available: ${participantCount}`);
+      return [];
+    }
+
+    // For other errors
+    const errorText = await response.text();
+    console.error(`❌ API Error Response:`, errorText);
+    throw new Error(`Failed to get event participants: ${response.status} - ${errorText}`);
+
+  } catch (error) {
+    console.error("❌ Error getting event participants:", error);
+    // Return empty array on error to prevent UI crashes
+    return [];
+  }
+};

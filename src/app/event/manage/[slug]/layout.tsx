@@ -6,11 +6,11 @@ export default function EventRouteLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <div className="bg-[#131517] min-h-screen">
       {/* Navbar Login */}
       <Navbar active="none" />
       {/* Main content */}
-      <main>{children}</main>
-    </>
+      <main className="min-h-screen">{children}</main>
+    </div>
   );
 }

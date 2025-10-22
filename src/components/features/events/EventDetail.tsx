@@ -7,6 +7,9 @@ import { usePrivy } from "@privy-io/react-auth";
 import { handleMouseMove } from "@/utils/handleInput";
 import CopyButton from "@/components/ui/CopyButton";
 import DepositModal from "./DepositModal";
+import Navbar from "@/components/organism/Navbar";
+import { getParticipantStatus, claimReward } from "@/utils/api/events";
+import { generateParticipantQRCode } from "@/utils/qrCode";
 
 const MAX_SHIFT = 15;
 
@@ -41,10 +44,88 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   const [showQRModal, setShowQRModal] = useState(false);
   const [userIsAttended, setUserIsAttended] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [participantStatus, setParticipantStatus] = useState<any>(null);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
   const handleDepositSuccess = () => {
     // Refresh event data to show updated participant count
     loadEvent();
+    // Load participant status
+    if (authenticated && user) {
+      loadParticipantStatus();
+    }
+  };
+
+  const loadParticipantStatus = async () => {
+    if (!authenticated || !user || !event) return;
+
+    try {
+      const response = await getParticipantStatus(event.event_id, user.wallet?.address || '');
+      setParticipantStatus(response.participant);
+      setUserIsAttended(response.participant?.is_attend || false);
+    } catch (error) {
+      console.error('Error loading participant status:', error);
+    }
+  };
+
+  const handleClaimReward = async () => {
+    if (!authenticated || !user || !event) return;
+
+    const userAddress = user.wallet?.address;
+    if (!userAddress) {
+      alert('Wallet address not available');
+      return;
+    }
+
+    try {
+      setClaimLoading(true);
+
+      // First call smart contract function claimReward
+      const { web3Service } = await import("@/utils/web3");
+      web3Service.setProvider(user.wallet);
+
+      const txHash = await web3Service.claimReward(event.vault_address);
+      console.log("Claim Reward transaction hash:", txHash);
+
+      // Wait for transaction confirmation
+      // In a real implementation, you might want to wait for transaction confirmation
+
+      // Then call backend API to record the claim
+      const response = await claimReward({
+        event_id: event.event_id,
+        user_address: userAddress
+      });
+
+      if (response.success) {
+        alert('Reward claimed successfully!');
+        // Refresh participant status
+        await loadParticipantStatus();
+      } else {
+        alert(response.message || 'Failed to claim reward');
+      }
+    } catch (error) {
+      console.error('Error claiming reward:', error);
+      alert('Failed to claim reward. Please try again.');
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
+  const generateQRCode = async () => {
+    if (!authenticated || !user || !event) return;
+
+    const userId = user.id;
+    if (!userId) return;
+
+    try {
+      const qrDataUrl = await generateParticipantQRCode(event.event_id, userId);
+      setQrCodeDataUrl(qrDataUrl);
+      setShowQRModal(true);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      alert('Failed to generate QR code');
+    }
   };
 
   const loadEvent = async () => {
@@ -65,6 +146,12 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       loadEvent();
     }
   }, [eventId]);
+
+  useEffect(() => {
+    if (eventData?.event && authenticated && user) {
+      loadParticipantStatus();
+    }
+  }, [eventData?.event, authenticated, user]);
 
   // Mouse tracking for interactive background
   useEffect(() => {
@@ -153,6 +240,41 @@ export default function EventDetail({ eventId }: { eventId: string }) {
 
   if (error || !event) {
     return (
+      <>
+        <Navbar />
+        <section className="min-h-screen bg-[#131517] relative overflow-hidden">
+          {/* Animated Background */}
+          <div
+            className="absolute top-0 left-0 w-full h-full light-orb z-0"
+            style={{
+              transform: `translate(${position.x}px, ${position.y}px)`,
+            }}
+          >
+            <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl -top-20 -left-20 animate-pulse-slow"></div>
+            <div className="absolute w-[400px] h-[400px] bg-pink-500/10 rounded-full blur-3xl bottom-20 right-10 animate-pulse-slow delay-500"></div>
+          </div>
+
+          <div className="relative z-10 flex items-center justify-center min-h-screen pt-16">
+            <div className="text-center">
+              <div className="text-6xl mb-6">⚠️</div>
+              <h3 className="text-3xl font-bold text-white mb-4">Error Loading Event</h3>
+              <p className="text-gray-300 mb-8 text-lg">{error || "Event not found"}</p>
+              <Link
+                href="/discover"
+                className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
+              >
+                Back to Discover
+              </Link>
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Navbar />
       <section className="min-h-screen bg-[#131517] relative overflow-hidden">
         {/* Animated Background */}
         <div
@@ -165,60 +287,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
           <div className="absolute w-[400px] h-[400px] bg-pink-500/10 rounded-full blur-3xl bottom-20 right-10 animate-pulse-slow delay-500"></div>
         </div>
 
-        <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="text-6xl mb-6">⚠️</div>
-            <h3 className="text-3xl font-bold text-white mb-4">Error Loading Event</h3>
-            <p className="text-gray-300 mb-8 text-lg">{error || "Event not found"}</p>
-            <Link
-              href="/discover"
-              className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
-            >
-              Back to Discover
-            </Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="min-h-screen bg-[#131517] relative overflow-hidden">
-      {/* Animated Background */}
-      <div
-        className="absolute top-0 left-0 w-full h-full light-orb z-0"
-        style={{
-          transform: `translate(${position.x}px, ${position.y}px)`,
-        }}
-      >
-        <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl -top-20 -left-20 animate-pulse-slow"></div>
-        <div className="absolute w-[400px] h-[400px] bg-pink-500/10 rounded-full blur-3xl bottom-20 right-10 animate-pulse-slow delay-500"></div>
-      </div>
-
-      <div className="relative z-10">
-        {/* Navigation */}
-        <nav className="p-4">
-          <div className="flex justify-between items-center-safe">
-            <h1 className="text-white font-bold">ATFI</h1>
-
-            <div className="flex gap-5 justify-center items-center me-2">
-              <Link href="/discover" className="flex justify-center items-center text-white hover:text-purple-400 group">
-                <span className="group-hover:rotate-90 transition duration-300 ease-in-out mr-2">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-current">
-                    <path d="M12 10.9c-.61 0-1.1.49-1.1 1.1s.49 1.1 1.1 1.1c.61 0 1.1-.49 1.1-1.1s-.49-1.1-1.1-1.1zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm2.19 12.19L6 18l3.81-8.19L18 6l-3.81 8.19z"/>
-                  </svg>
-                </span>
-                Explore Events
-              </Link>
-              <Link
-                href="/signin"
-                className="text-white bg-white/10 hover:bg-white hover:text-gray-900 font-normal rounded-full text-sm px-3 py-1 transition duration-300 ease-in-out"
-              >
-                Sign In
-              </Link>
-            </div>
-          </div>
-        </nav>
+        <div className="relative z-10 pt-16"> {/* Add padding-top to account for fixed navbar */}
 
         {/* Event Header */}
         <div className="relative">
@@ -270,36 +339,74 @@ export default function EventDetail({ eventId }: { eventId: string }) {
         {/* Action Buttons */}
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex flex-wrap gap-4 justify-center">
-            {event.status === 'REGISTRATION_OPEN' && (
+            {event.status === 'REGISTRATION_OPEN' && !participantStatus?.hasDeposited && (
+            <button
+              onClick={() => setShowDepositModal(true)}
+              className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
+            >
+              Deposit to Join
+            </button>
+          )}
+
+            {event.status === 'REGISTRATION_CLOSED' && (
               <button
-                onClick={() => setShowDepositModal(true)}
-                className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
+                className="text-gray-900 bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
               >
-                Deposit to Join
+                Close This Register
               </button>
             )}
 
             {event.status === 'LIVE' && (
               <>
-                {userIsAttended ? (
-                  <div className="text-white bg-white/10 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center">
-                    ✓ You are already attended
+
+                {participantStatus?.is_attend ? (
+                  <div className="text-white bg-green-500/20 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center border border-green-500/30">
+                    ✓ Already Checked In
                   </div>
-                ) : (
+                ) : participantStatus ? (
                   <button
-                    onClick={() => setShowQRModal(true)}
-                    className="text-white bg-white/10 hover:bg-white hover:text-gray-900 font-normal rounded-full text-sm px-3 py-1 transition duration-300 ease-in-out"
+                    onClick={generateQRCode}
+                    className="text-gray-900 bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
                   >
                     Show QR Code
                   </button>
+                ) : (
+                  <div className="text-gray-400 bg-white/5 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center">
+                    Register to check in
+                  </div>
                 )}
               </>
             )}
 
             {event.status === 'SETTLED' && (
-              <button className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center">
-                Claim Reward
-              </button>
+              <>
+                {participantStatus?.is_attend ? (
+                  participantStatus?.is_claim ? (
+                    <div className="text-white bg-green-500/20 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center border border-green-500/30">
+                      ✓ You are already take a reward
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleClaimReward}
+                      disabled={claimLoading}
+                      className="text-gray-900 bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {claimLoading ? (
+                        <div className="flex items-center gap-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                          Claiming...
+                        </div>
+                      ) : (
+                        'Claim Reward'
+                      )}
+                    </button>
+                  )
+                ) : (
+                  <div className="text-gray-400 bg-white/5 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center">
+                    You are not eligible to claim this
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -407,11 +514,11 @@ export default function EventDetail({ eventId }: { eventId: string }) {
         </div>
 
         {/* QR Code Modal */}
-        {showQRModal && (
+        {showQRModal && qrCodeDataUrl && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-[#131517] rounded-2xl p-8 max-w-md w-full border border-white/10">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-white">Event QR Code</h3>
+                <h3 className="text-2xl font-bold text-white">Your Check-in QR Code</h3>
                 <button
                   onClick={() => setShowQRModal(false)}
                   className="text-gray-400 hover:text-white transition-colors"
@@ -422,26 +529,47 @@ export default function EventDetail({ eventId }: { eventId: string }) {
                 </button>
               </div>
 
-              {/* Placeholder QR Code */}
+              {/* QR Code */}
               <div className="bg-white p-4 rounded-xl mb-6 flex items-center justify-center">
-                <div className="text-gray-400 text-center">
-                  <div className="text-6xl mb-2">📱</div>
-                  <p className="text-sm">QR Code for Event Check-in</p>
-                  <p className="text-xs mt-1">Event ID: {event.event_id}</p>
-                </div>
+                <img src={qrCodeDataUrl} alt="Event Check-in QR Code" className="w-64 h-64" />
               </div>
 
-              <div className="text-center text-gray-300">
+              <div className="text-center text-gray-300 mb-4">
                 <p className="text-sm">Show this QR code at the event venue</p>
                 <p className="text-xs mt-2">Present to event staff for check-in</p>
               </div>
 
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="w-full mt-6 text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-              >
-                Close
-              </button>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-xs font-medium text-blue-400">Important</span>
+                </div>
+                <ul className="text-xs text-gray-300 space-y-1">
+                  <li>• This QR code is unique to your wallet and this event</li>
+                  <li>• You can access it again from this event page</li>
+                  <li>• Event ID: {event.event_id}</li>
+                </ul>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(qrCodeDataUrl);
+                    alert('QR code copied to clipboard!');
+                  }}
+                  className="flex-1 text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all"
+                >
+                  Copy QR Code
+                </button>
+                <button
+                  onClick={() => setShowQRModal(false)}
+                  className="flex-1 text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -462,5 +590,6 @@ export default function EventDetail({ eventId }: { eventId: string }) {
         />
       )}
     </section>
+    </>
   );
 }
