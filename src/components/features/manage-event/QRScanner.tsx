@@ -3,11 +3,19 @@
 import { useState } from "react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { parseParticipantQRData, isQRCodeValid } from "@/utils/qrCode";
-import { checkInParticipant } from "@/utils/api/events";
+import { checkInParticipant, Participant } from "@/utils/api/events";
 
 interface IDetectedBarcode {
-  boundingBox: any;
-  cornerPoints: any[];
+  boundingBox: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  cornerPoints: Array<{
+    x: number;
+    y: number;
+  }>;
   format: string;
   rawValue: string;
 }
@@ -16,7 +24,7 @@ interface QRScannerProps {
   isOpen: boolean;
   onClose: () => void;
   eventId: number;
-  onCheckInSuccess?: (participantData: any) => void;
+  onCheckInSuccess?: (participantData: Participant) => void;
 }
 
 interface CheckInResult {
@@ -54,35 +62,72 @@ export default function QRScanner({ isOpen, onClose, eventId, onCheckInSuccess }
       // QR codes no longer expire - they only use user_id and event_id
       // No timestamp validation needed
 
-      // Call check-in API - prioritize user_id if available, fallback to user_address
-      const checkInData: any = {
-        event_id: eventId
-      };
-
+      // QR codes now use user_id and backend check-in API directly accepts user_id
       if (qrData.user_id) {
-        checkInData.user_id = qrData.user_id;
+        console.log("🔍 QR code contains user_id, checking in directly:", qrData.user_id);
+
+        // Call check-in API with user_id as expected by updated backend
+        const checkInData = {
+          event_id: eventId,
+          user_id: qrData.user_id
+        };
+
         console.log("🔍 Checking in participant using user_id:", qrData.user_id);
-      } else {
-        checkInData.user_address = qrData.user_address;
+        const response = await checkInParticipant(checkInData);
+
+        if (response.success) {
+          setCheckInResult({
+            success: true,
+            message: response.message,
+            participant: response.participant
+          });
+          onCheckInSuccess?.(response.participant);
+        } else {
+          setCheckInResult({
+            success: false,
+            message: response.message || "Check-in failed",
+            error: response.message || "Check-in failed"
+          });
+        }
+        return;
+      }
+
+      // Fallback to old format if user_address is available (for backward compatibility)
+      if (qrData.user_address) {
+        console.log("🔍 Using user_address from QR code (legacy format):", qrData.user_address);
+
+        const checkInData = {
+          event_id: eventId,
+          user_address: qrData.user_address
+        };
+
         console.log("🔍 Checking in participant using user_address:", qrData.user_address);
+        const response = await checkInParticipant(checkInData);
+
+        if (response.success) {
+          setCheckInResult({
+            success: true,
+            message: response.message,
+            participant: response.participant
+          });
+          onCheckInSuccess?.(response.participant);
+        } else {
+          setCheckInResult({
+            success: false,
+            message: response.message || "Check-in failed",
+            error: response.message || "Check-in failed"
+          });
+        }
+        return;
       }
 
-      const response = await checkInParticipant(checkInData);
-
-      if (response.success) {
-        setCheckInResult({
-          success: true,
-          message: response.message,
-          participant: response.participant
-        });
-        onCheckInSuccess?.(response.participant);
-      } else {
-        setCheckInResult({
-          success: false,
-          message: response.message || "Check-in failed",
-          error: response.message || "Check-in failed"
-        });
-      }
+      // No valid user identifier found
+      console.error("❌ No user ID or user address available for check-in");
+      setCheckInResult({
+        success: false,
+        message: "Invalid QR code format",
+        error: "QR code does not contain valid participant information"
+      });
 
     } catch (error) {
       console.error('QR scan processing error:', error);
@@ -96,7 +141,7 @@ export default function QRScanner({ isOpen, onClose, eventId, onCheckInSuccess }
     }
   };
 
-  const handleError = (error: any) => {
+  const handleError = (error: Error) => {
     console.error('QR Scanner error:', error);
     setCheckInResult({
       success: false,
@@ -197,7 +242,10 @@ export default function QRScanner({ isOpen, onClose, eventId, onCheckInSuccess }
 
                   {checkInResult.participant && (
                     <div className="mt-3 text-xs space-y-1">
-                      <p><span className="font-medium">Wallet:</span> {checkInResult.participant.user_address.slice(0, 6)}...{checkInResult.participant.user_address.slice(-4)}</p>
+                      <p><span className="font-medium">Wallet:</span> {checkInResult.participant.user_address ?
+                        `${checkInResult.participant.user_address.slice(0, 6)}...${checkInResult.participant.user_address.slice(-4)}` :
+                        `ID: ${checkInResult.participant.user_id.slice(0, 8)}...`
+                      }</p>
                       <p><span className="font-medium">Status:</span> Checked In</p>
                     </div>
                   )}

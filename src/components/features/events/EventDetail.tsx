@@ -9,6 +9,7 @@ import CopyButton from "@/components/ui/CopyButton";
 import DepositModal from "./DepositModal";
 import Navbar from "@/components/organism/Navbar";
 import { getParticipantStatus, claimReward } from "@/utils/api/events";
+import WalletService from "@/utils/walletService";
 import { generateParticipantQRCode } from "@/utils/qrCode";
 
 const MAX_SHIFT = 15;
@@ -94,7 +95,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       // Then call backend API to record the claim
       const response = await claimReward({
         event_id: event.event_id,
-        user_address: userAddress
+        user_id: user.id // Use user_id instead of user_address for consistency
       });
 
       if (response.success) {
@@ -115,16 +116,57 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   const generateQRCode = async () => {
     if (!authenticated || !user || !event) return;
 
-    const userId = user.id;
-    if (!userId) return;
-
     try {
-      const qrDataUrl = await generateParticipantQRCode(event.event_id, userId);
+      // Get the preferred wallet address
+      const preferredWallet = WalletService.getPreferredWallet(user);
+      if (!preferredWallet) {
+        console.error('No preferred wallet found');
+        alert('No wallet available for QR code generation');
+        return;
+      }
+
+      console.log('🔍 Looking up profile data for QR code generation...');
+      console.log(`📋 Event ID: ${event.event_id}, Wallet: ${preferredWallet.address}`);
+
+      // First, get the profile data using the wallet address to retrieve the profile's UUID
+      const profileResponse = await fetch(`http://localhost:8080/api/v1/profiles/${preferredWallet.address}`);
+
+      if (!profileResponse.ok) {
+        console.error('Profile not found in database');
+        alert('Profile not found. Please ensure you have a profile created.');
+        return;
+      }
+
+      const profileData = await profileResponse.json();
+      const profileUserId = profileData.id; // This is the UUID that should be used in QR codes
+      console.log(`✅ Found profile with user_id: ${profileUserId}`);
+
+      // Verify this user is actually registered as a participant for this event
+      const participantResponse = await fetch(`http://localhost:8080/api/v1/events/${event.event_id}/participants`);
+
+      if (participantResponse.ok) {
+        const participantsData = await participantResponse.json();
+        const participants = participantsData.participants || participantsData || [];
+        const isParticipant = participants.some((p: any) => p.user_id === profileUserId);
+
+        if (!isParticipant) {
+          console.error('User is not registered as participant for this event');
+          alert('You are not registered as a participant for this event. Please register first.');
+          return;
+        }
+
+        console.log(`✅ Verified user is registered as participant for event ${event.event_id}`);
+      }
+
+      // Generate QR code using the profile's UUID (which matches participant table's user_id)
+      const qrDataUrl = await generateParticipantQRCode(event.event_id, profileUserId);
       setQrCodeDataUrl(qrDataUrl);
       setShowQRModal(true);
+
+      console.log(`🎯 QR code generated successfully with profile user_id: ${profileUserId}`);
     } catch (error) {
-      console.error('Error generating QR code:', error);
-      alert('Failed to generate QR code');
+      console.error('❌ Error generating QR code:', error);
+      alert('Failed to generate QR code. Please ensure you are registered for this event.');
     }
   };
 

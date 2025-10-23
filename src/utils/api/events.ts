@@ -236,8 +236,37 @@ export const getParticipantStatus = async (eventId: number, userAddress: string)
   }
 };
 
-// Get all participants for an event
-export const getEventParticipants = async (eventId: string): Promise<Participant[]> => {
+// Get participant by user_address to retrieve user_id for QR code
+export const getParticipantByAddress = async (eventId: number, userAddress: string): Promise<{
+  participant: Participant | null;
+}> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participant/by-address/${userAddress}`);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { participant: null };
+      }
+      const errorText = await response.text();
+      throw new Error(`Failed to get participant by address: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error getting participant by address:", error);
+    throw error;
+  }
+};
+
+// Enhanced participant interface with profile data
+export interface ParticipantWithProfile extends Participant {
+  username?: string;
+  email?: string;
+  name?: string;
+}
+
+// Get all participants for an event with profile information
+export const getEventParticipants = async (eventId: string): Promise<ParticipantWithProfile[]> => {
   try {
     console.log(`🔍 Fetching participants for event ${eventId} from: ${API_BASE_URL}/events/${eventId}/participants`);
 
@@ -251,7 +280,14 @@ export const getEventParticipants = async (eventId: string): Promise<Participant
       const participants = data.participants || data || [];
       console.log(`👥 Processed participants array:`, participants);
       console.log(`📈 Total participants found:`, participants.length);
-      return participants;
+
+      // If participants have profile information, use them directly
+      if (participants.length > 0 && participants[0].username) {
+        return participants;
+      }
+
+      // Otherwise, try to enrich with profile data
+      return await enrichParticipantsWithProfileData(participants);
     }
 
     // If participants endpoint doesn't exist (404), get event details instead
@@ -286,4 +322,67 @@ export const getEventParticipants = async (eventId: string): Promise<Participant
     // Return empty array on error to prevent UI crashes
     return [];
   }
+};
+
+// Get participant by user_id to retrieve wallet address
+export const getParticipantByUserId = async (eventId: number, userId: string): Promise<{
+  participant: {
+    id: string;
+    user_id: string;
+    user_address: string;
+    is_attend: boolean;
+    is_claim: boolean;
+    created_at: string;
+    updated_at: string;
+  } | null;
+}> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participants/by-userid/${userId}`);
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return { participant: null };
+      }
+      const errorText = await response.text();
+      throw new Error(`Failed to get participant by user_id: ${response.status} - ${errorText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error getting participant by user_id:", error);
+    throw error;
+  }
+};
+
+// Helper function to enrich participants with profile data
+const enrichParticipantsWithProfileData = async (participants: Participant[]): Promise<ParticipantWithProfile[]> => {
+  const enrichedParticipants: ParticipantWithProfile[] = [];
+
+  for (const participant of participants) {
+    try {
+      // Try to get profile data using the user_id (which references profiles table)
+      const profileResponse = await fetch(`${API_BASE_URL}/profiles/${participant.user_id}`);
+
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        enrichedParticipants.push({
+          ...participant,
+          username: profileData.username || profileData.name,
+          email: profileData.email,
+          name: profileData.name || profileData.username
+        });
+        console.log(`✅ Enriched participant ${participant.user_id} with profile data`);
+      } else {
+        // If profile not found, still include basic participant data
+        enrichedParticipants.push(participant);
+        console.log(`⚠️ Profile not found for participant ${participant.user_id}, using basic data`);
+      }
+    } catch (error) {
+      console.error(`❌ Error fetching profile for participant ${participant.user_id}:`, error);
+      // Still include participant data even if profile fetch fails
+      enrichedParticipants.push(participant);
+    }
+  }
+
+  return enrichedParticipants;
 };
