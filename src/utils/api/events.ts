@@ -270,24 +270,22 @@ export const getEventParticipants = async (eventId: string): Promise<Participant
   try {
     console.log(`🔍 Fetching participants for event ${eventId} from: ${API_BASE_URL}/events/${eventId}/participants`);
 
-    // First try the dedicated participants endpoint
-    let response = await fetch(`${API_BASE_URL}/events/${eventId}/participants`);
+    // Use the dedicated participants endpoint with profile data
+    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participants`);
     console.log(`📊 API Response Status: ${response.status} ${response.statusText}`);
 
     if (response.ok) {
       const data = await response.json();
       console.log(`📋 Raw API Response Data:`, data);
+
+      // The new backend endpoint returns {participants: [...], count: N}
       const participants = data.participants || data || [];
       console.log(`👥 Processed participants array:`, participants);
       console.log(`📈 Total participants found:`, participants.length);
 
-      // If participants have profile information, use them directly
-      if (participants.length > 0 && participants[0].username) {
-        return participants;
-      }
-
-      // Otherwise, try to enrich with profile data
-      return await enrichParticipantsWithProfileData(participants);
+      // The backend now provides profile information directly
+      // No need for additional enrichment
+      return participants;
     }
 
     // If participants endpoint doesn't exist (404), get event details instead

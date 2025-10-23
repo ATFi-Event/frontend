@@ -57,23 +57,43 @@ export default function GuestContent() {
   const registrationProgress = Math.min(100, (registeredNumber / maxParticipants) * 100);
   const attendanceRate = registeredNumber > 0 ? (checkedInNumber / registeredNumber) * 100 : 0;
 
-  const handleCheckInSuccess = (participantData: { user_id: string, user_address: string }) => {
-    // Update participant list
-    setParticipants(prev =>
-      prev.map(p =>
-        p.user_id === participantData.user_id
-          ? { ...p, is_attend: true }
-          : p
-      )
-    );
+  const handleCheckInSuccess = (participantData: { user_id: string, user_address?: string }) => {
+    console.log("🔄 Updating participant after check-in:", participantData);
+
+    // Update participant list by finding the participant with matching user_id
+    setParticipants(prev => {
+      const updatedParticipants = prev.map(p => {
+        if (p.user_id === participantData.user_id) {
+          console.log("✅ Found participant to update:", p.user_id);
+          return { ...p, is_attend: true };
+        }
+        return p;
+      });
+
+      // If the participant wasn't found in the list (might be new data)
+      const participantExists = prev.some(p => p.user_id === participantData.user_id);
+      if (!participantExists) {
+        console.log("⚠️ Participant not found in current list, refreshing data...");
+        // Trigger a refresh of the participant data
+        setTimeout(() => {
+          if (slug) {
+            getEventParticipants(slug as string)
+              .then(data => {
+                console.log("🔄 Refreshed participant data:", data);
+                setParticipants(data);
+              })
+              .catch(err => console.error("❌ Failed to refresh participant data:", err));
+          }
+        }, 1000);
+      }
+
+      return updatedParticipants;
+    });
   };
 
   const filteredParticipants = participants.filter(participant =>
     participant.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    participant.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    participant.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    participant.user_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    participant.user_id.toLowerCase().includes(searchTerm.toLowerCase())
+    participant.user_address.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -262,30 +282,18 @@ export default function GuestContent() {
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center">
                       <span className="text-white font-bold text-lg">
-                        {(participant.name || participant.username)?.charAt(0)?.toUpperCase() || participant.user_address.slice(2, 4).toUpperCase()}
+                        {(participant.name || 'User')?.charAt(0)?.toUpperCase() || participant.user_address.slice(2, 4).toUpperCase()}
                       </span>
                     </div>
                     <div>
                       <h4 className="text-white font-medium text-lg">
-                        {participant.name || participant.username || "Anonymous User"}
+                        {participant.name || "Anonymous User"}
                       </h4>
-                      {participant.username && participant.name && (
-                        <p className="text-gray-400 text-sm">@{participant.username}</p>
-                      )}
-                      {participant.email && (
-                        <p className="text-gray-400 text-sm">{participant.email}</p>
-                      )}
                       <div className="flex items-center gap-2 mt-1">
                         <p className="text-gray-500 text-xs font-mono">
                           {participant.user_address.slice(0, 6)}...{participant.user_address.slice(-4)}
                         </p>
                         <CopyButton textToCopy={participant.user_address} />
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-gray-600 text-xs font-mono">
-                          ID: {participant.user_id.slice(0, 8)}...
-                        </p>
-                        <CopyButton textToCopy={participant.user_id} />
                       </div>
                     </div>
                   </div>
