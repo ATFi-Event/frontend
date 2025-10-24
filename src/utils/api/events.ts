@@ -1,6 +1,6 @@
 // API utilities for event operations
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export interface EventMetadataRequest {
   event_id: number;
@@ -31,7 +31,7 @@ export interface EventMetadataResponse {
 
 export const createEventMetadata = async (data: EventMetadataRequest): Promise<EventMetadataResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/events/metadata`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/events/metadata`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -53,7 +53,7 @@ export const createEventMetadata = async (data: EventMetadataRequest): Promise<E
 
 export const getEventDetails = async (eventId: string): Promise<EventMetadataResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -69,7 +69,7 @@ export const getEventDetails = async (eventId: string): Promise<EventMetadataRes
 
 export const getAllEvents = async (): Promise<{ events: EventMetadataResponse[] }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/events`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/events`);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -106,7 +106,7 @@ export interface RegisterUserResponse {
 
 export const registerUser = async (data: RegisterUserRequest): Promise<RegisterUserResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/events/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/events/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -172,7 +172,7 @@ export interface ParticipantQRData {
 // Check in participant (scan QR code)
 export const checkInParticipant = async (data: CheckInRequest): Promise<CheckInResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/checkin`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/checkin`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -195,7 +195,7 @@ export const checkInParticipant = async (data: CheckInRequest): Promise<CheckInR
 // Claim reward (update participant status)
 export const claimReward = async (data: ClaimRewardRequest): Promise<ClaimRewardResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/claim`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/claim`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -220,7 +220,7 @@ export const getParticipantStatus = async (eventId: number, userAddress: string)
   participant: Participant | null;
 }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participant/${userAddress}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/participant/${userAddress}`);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -242,7 +242,7 @@ export const getParticipantByAddress = async (eventId: number, userAddress: stri
   participant: Participant | null;
 }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participant/by-address/${userAddress}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/participant/by-address/${userAddress}`);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -269,10 +269,10 @@ export interface ParticipantWithProfile extends Participant {
 // Get all participants for an event with profile information
 export const getEventParticipants = async (eventId: string): Promise<ParticipantWithProfile[]> => {
   try {
-    console.log(`🔍 Fetching participants for event ${eventId} from: ${API_BASE_URL}/events/${eventId}/participants`);
+    console.log(`🔍 Fetching participants for event ${eventId} from: ${API_BASE_URL}/api/v1/events/${eventId}/participants`);
 
     // Use the dedicated participants endpoint with profile data
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participants`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/participants`);
     console.log(`📊 API Response Status: ${response.status} ${response.statusText}`);
 
     if (response.ok) {
@@ -292,7 +292,7 @@ export const getEventParticipants = async (eventId: string): Promise<Participant
     // If participants endpoint doesn't exist (404), get event details instead
     if (response.status === 404) {
       console.log(`🔄 Participants endpoint not found, trying event details endpoint...`);
-      const eventResponse = await fetch(`${API_BASE_URL}/events/${eventId}`);
+      const eventResponse = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}`);
 
       if (!eventResponse.ok) {
         throw new Error(`Failed to get event details: ${eventResponse.status}`);
@@ -336,7 +336,7 @@ export const getParticipantByUserId = async (eventId: number, userId: string): P
   } | null;
 }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/events/${eventId}/participants/by-userid/${userId}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/events/${eventId}/participants/by-userid/${userId}`);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -360,7 +360,7 @@ const enrichParticipantsWithProfileData = async (participants: Participant[]): P
   for (const participant of participants) {
     try {
       // Try to get profile data using the user_id (which references profiles table)
-      const profileResponse = await fetch(`${API_BASE_URL}/profiles/${participant.user_id}`);
+      const profileResponse = await fetch(`${API_BASE_URL}/api/v1/profiles/${participant.user_id}`);
 
       if (profileResponse.ok) {
         const profileData = await profileResponse.json();

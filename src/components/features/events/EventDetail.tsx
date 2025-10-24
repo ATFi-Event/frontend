@@ -60,9 +60,10 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   const [showQRModal, setShowQRModal] = useState(false);
   const [userIsAttended, setUserIsAttended] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
-  const [participantStatus, setParticipantStatus] = useState<ParticipantStatus | null>(null);
+  const [participantStatus, setParticipantStatus] =
+    useState<ParticipantStatus | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [settleLoading, setSettleLoading] = useState(false);
 
   // Get event object for calculations
@@ -81,21 +82,24 @@ export default function EventDetail({ eventId }: { eventId: string }) {
     if (!authenticated || !user || !event) return;
 
     try {
-      const response = await getParticipantStatus(event.event_id, user.wallet?.address || '');
+      const response = await getParticipantStatus(
+        event.event_id,
+        user.wallet?.address || ""
+      );
       setParticipantStatus(response.participant);
       setUserIsAttended(response.participant?.is_attend || false);
     } catch (error) {
-      console.error('Error loading participant status:', error);
+      console.error("Error loading participant status:", error);
     }
   };
 
   const handleClaimReward = async () => {
     if (!authenticated || !user || !event) return;
-    console.log('pantek')
+    console.log("pantek");
 
     const userAddress = user.wallet?.address;
     if (!userAddress) {
-      alert('Wallet address not available');
+      alert("Wallet address not available");
       return;
     }
 
@@ -112,11 +116,21 @@ export default function EventDetail({ eventId }: { eventId: string }) {
         setError("No wallet available for transaction");
         return;
       }
-      console.log(`Using wallet for claim reward: ${preferredWallet.name} (${preferredWallet.address})`);
-      console.log(`Wallet type: ${preferredWallet.type === 'gmail' ? 'Gmail-linked wallet' : 'External wallet'}`);
+      console.log(
+        `Using wallet for claim reward: ${preferredWallet.name} (${preferredWallet.address})`
+      );
+      console.log(
+        `Wallet type: ${
+          preferredWallet.type === "gmail"
+            ? "Gmail-linked wallet"
+            : "External wallet"
+        }`
+      );
 
       // For Gmail-linked wallets, use Privy's sendTransaction
-      console.log(`Using wallet for claim Tes: ${preferredWallet.name} (${preferredWallet.address})`);
+      console.log(
+        `Using wallet for claim Tes: ${preferredWallet.name} (${preferredWallet.address})`
+      );
       // For external wallets (MetaMask), use traditional method (no sendTransaction)
       const txHash = await sendTransaction(
         {
@@ -124,7 +138,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
           data: `0xb88a802f`,
         },
         {
-          address: preferredWallet.address // Use the preferred wallet for signing
+          address: preferredWallet.address, // Use the preferred wallet for signing
         }
       );
       console.log("Claim Reward transaction hash:", txHash);
@@ -133,18 +147,21 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       // In a real implementation, you might want to wait for transaction confirmation
 
       // Then call backend API to record the claim
-      const response = await apiService.claimReward(event.event_id.toString(), user.wallet?.address || '');
+      const response = await apiService.claimReward(
+        event.event_id.toString(),
+        user.wallet?.address || ""
+      );
 
       if (response.success) {
-        alert('Reward claimed successfully!');
+        alert("Reward claimed successfully!");
         // Refresh participant status
         await loadParticipantStatus();
       } else {
-        alert(response.message || 'Failed to claim reward');
+        alert(response.message || "Failed to claim reward");
       }
     } catch (error) {
-      console.error('Error claiming reward:', error);
-      alert('Failed to claim reward. Please try again.');
+      console.error("Error claiming reward:", error);
+      alert("Failed to claim reward. Please try again.");
     } finally {
       setClaimLoading(false);
     }
@@ -155,42 +172,50 @@ export default function EventDetail({ eventId }: { eventId: string }) {
 
     const userAddress = user.wallet?.address;
     if (!userAddress) {
-      alert('Wallet address not available');
+      alert("Wallet address not available");
       return;
     }
 
     // Check if user is the event organizer
     if (userAddress.toLowerCase() !== event.organizer_address.toLowerCase()) {
-      alert('Only the event organizer can settle this event');
+      alert("Only the event organizer can settle this event");
       return;
     }
 
     try {
       setSettleLoading(true);
 
-      console.log('🔄 Getting attended participants for event settlement...');
+      console.log("🔄 Getting attended participants for event settlement...");
 
       // Step 1: Call backend API to get attended participants
-      const participantsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${event.event_id}/participants`);
+      const participantsResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.event_id}/participants`
+      );
 
       if (!participantsResponse.ok) {
-        throw new Error(`Failed to get participants: ${participantsResponse.status}`);
+        throw new Error(
+          `Failed to get participants: ${participantsResponse.status}`
+        );
       }
 
       const participantsData = await participantsResponse.json();
-      const participants = participantsData.participants || participantsData || [];
+      const participants =
+        participantsData.participants || participantsData || [];
       console.log(`📊 Found ${participants.length} participants`);
 
       // Step 2: Filter participants who have attended (is_attend: true)
       const attendedParticipants = participants
         .filter((p: ParticipantStatus) => p.is_attend)
         .map((p: ParticipantStatus) => p.user_address)
-        .filter((address: string | null) => address && address.trim() !== '');
+        .filter((address: string | null) => address && address.trim() !== "");
 
-      console.log(`✅ Found ${attendedParticipants.length} attended participants:`, attendedParticipants);
+      console.log(
+        `✅ Found ${attendedParticipants.length} attended participants:`,
+        attendedParticipants
+      );
 
       if (attendedParticipants.length === 0) {
-        alert('No participants have attended this event yet. Cannot settle.');
+        alert("No participants have attended this event yet. Cannot settle.");
         return;
       }
 
@@ -198,14 +223,21 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       const { web3Service } = await import("@/utils/web3");
       web3Service.setProvider(user.wallet);
 
-      console.log('🔗 Calling settleEvent smart contract with participant addresses...');
-      const txHash = await web3Service.settleEvent(event.vault_address, attendedParticipants);
+      console.log(
+        "🔗 Calling settleEvent smart contract with participant addresses..."
+      );
+      const txHash = await web3Service.settleEvent(
+        event.vault_address,
+        attendedParticipants
+      );
 
       console.log("✅ Settle Event transaction hash:", txHash);
 
       // Wait for transaction confirmation
-      console.log('⏳ Waiting for transaction confirmation...');
-      alert(`Transaction submitted! Transaction hash: ${txHash}\n\nWaiting for confirmation...`);
+      console.log("⏳ Waiting for transaction confirmation...");
+      alert(
+        `Transaction submitted! Transaction hash: ${txHash}\n\nWaiting for confirmation...`
+      );
 
       // Wait for transaction to be mined (simple polling)
       let confirmed = false;
@@ -215,33 +247,43 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       while (!confirmed && attempts < maxAttempts) {
         try {
           // Simple way to check transaction confirmation - in production you'd use proper web3 libraries
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           attempts++;
 
           // For now, we'll assume the transaction is confirmed after a few attempts
           // In a real implementation, you'd check the transaction receipt
-          if (attempts >= 5) { // Wait ~10 seconds minimum
+          if (attempts >= 5) {
+            // Wait ~10 seconds minimum
             confirmed = true;
-            console.log(`✅ Transaction confirmed after ${attempts * 2} seconds`);
+            console.log(
+              `✅ Transaction confirmed after ${attempts * 2} seconds`
+            );
           }
         } catch (error) {
-          console.error('Error checking transaction confirmation:', error);
+          console.error("Error checking transaction confirmation:", error);
           break;
         }
       }
 
       if (confirmed) {
-        alert(`Event settled successfully! ${attendedParticipants.length} participants processed.\nTransaction confirmed: ${txHash}`);
+        alert(
+          `Event settled successfully! ${attendedParticipants.length} participants processed.\nTransaction confirmed: ${txHash}`
+        );
 
         // Refresh event data to update status
         await loadEvent();
       } else {
-        alert(`Transaction submitted but confirmation timed out.\nTransaction hash: ${txHash}\n\nThe event may still be settled. Please check the transaction status and refresh the page.`);
+        alert(
+          `Transaction submitted but confirmation timed out.\nTransaction hash: ${txHash}\n\nThe event may still be settled. Please check the transaction status and refresh the page.`
+        );
       }
-
     } catch (error) {
-      console.error('Error settling event:', error);
-      alert(`Failed to settle event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Error settling event:", error);
+      alert(
+        `Failed to settle event: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
       setSettleLoading(false);
     }
@@ -254,20 +296,24 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       // Get the preferred wallet address
       const preferredWallet = WalletService.getPreferredWallet(user);
       if (!preferredWallet) {
-        console.error('No preferred wallet found');
-        alert('No wallet available for QR code generation');
+        console.error("No preferred wallet found");
+        alert("No wallet available for QR code generation");
         return;
       }
 
-      console.log('🔍 Looking up profile data for QR code generation...');
-      console.log(`📋 Event ID: ${event.event_id}, Wallet: ${preferredWallet.address}`);
+      console.log("🔍 Looking up profile data for QR code generation...");
+      console.log(
+        `📋 Event ID: ${event.event_id}, Wallet: ${preferredWallet.address}`
+      );
 
       // First, get the profile data using the wallet address to retrieve the profile's UUID
-      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/profiles/${preferredWallet.address}`);
+      const profileResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/profiles/${preferredWallet.address}`
+      );
 
       if (!profileResponse.ok) {
-        console.error('Profile not found in database');
-        alert('Profile not found. Please ensure you have a profile created.');
+        console.error("Profile not found in database");
+        alert("Profile not found. Please ensure you have a profile created.");
         return;
       }
 
@@ -276,38 +322,56 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       console.log(`✅ Found profile with user_id: ${profileUserId}`);
 
       // Verify this user is actually registered as a participant for this event
-      const participantResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${event.event_id}/participants`);
+      const participantResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${event.event_id}/participants`
+      );
 
       if (participantResponse.ok) {
         const participantsData = await participantResponse.json();
-        const participants = participantsData.participants || participantsData || [];
-        const isParticipant = participants.some((p: ParticipantStatus) => p.user_id === profileUserId);
+        const participants =
+          participantsData.participants || participantsData || [];
+        const isParticipant = participants.some(
+          (p: ParticipantStatus) => p.user_id === profileUserId
+        );
 
         if (!isParticipant) {
-          console.error('User is not registered as participant for this event');
-          alert('You are not registered as a participant for this event. Please register first.');
+          console.error("User is not registered as participant for this event");
+          alert(
+            "You are not registered as a participant for this event. Please register first."
+          );
           return;
         }
 
-        console.log(`✅ Verified user is registered as participant for event ${event.event_id}`);
+        console.log(
+          `✅ Verified user is registered as participant for event ${event.event_id}`
+        );
       }
 
       // Generate QR code using the profile's UUID (which matches participant table's user_id)
-      const qrDataUrl = await generateParticipantQRCode(event.event_id, profileUserId);
+      const qrDataUrl = await generateParticipantQRCode(
+        event.event_id,
+        profileUserId
+      );
       setQrCodeDataUrl(qrDataUrl);
       setShowQRModal(true);
 
-      console.log(`🎯 QR code generated successfully with profile user_id: ${profileUserId}`);
+      console.log(
+        `🎯 QR code generated successfully with profile user_id: ${profileUserId}`
+      );
     } catch (error) {
-      console.error('❌ Error generating QR code:', error);
-      alert('Failed to generate QR code. Please ensure you are registered for this event.');
+      console.error("❌ Error generating QR code:", error);
+      alert(
+        "Failed to generate QR code. Please ensure you are registered for this event."
+      );
     }
   };
 
   const loadEvent = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${eventId}`);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/events/${eventId}`
+      );
       const data = await response.json();
       setEventData(data);
     } catch (err) {
@@ -318,7 +382,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   };
 
   useEffect(() => {
-    if (eventId && eventId !== 'undefined') {
+    if (eventId && eventId !== "undefined") {
       loadEvent();
     }
   }, [eventId]);
@@ -383,7 +447,10 @@ export default function EventDetail({ eventId }: { eventId: string }) {
     return null; // This will be handled by the loading state above
   }
 
-  const progressPercentage = event && event.max_participant > 0 ? ((eventData?.participant_count || 0) / event.max_participant) * 100 : 0;
+  const progressPercentage =
+    event && event.max_participant > 0
+      ? ((eventData?.participant_count || 0) / event.max_participant) * 100
+      : 0;
 
   if (loading) {
     return (
@@ -431,8 +498,12 @@ export default function EventDetail({ eventId }: { eventId: string }) {
           <div className="relative z-10 flex items-center justify-center min-h-screen pt-16">
             <div className="text-center">
               <div className="text-6xl mb-6">⚠️</div>
-              <h3 className="text-3xl font-bold text-white mb-4">Error Loading Event</h3>
-              <p className="text-gray-300 mb-8 text-lg">{error || "Event not found"}</p>
+              <h3 className="text-3xl font-bold text-white mb-4">
+                Error Loading Event
+              </h3>
+              <p className="text-gray-300 mb-8 text-lg">
+                {error || "Event not found"}
+              </p>
               <Link
                 href="/discover"
                 className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
@@ -461,326 +532,414 @@ export default function EventDetail({ eventId }: { eventId: string }) {
           <div className="absolute w-[400px] h-[400px] bg-pink-500/10 rounded-full blur-3xl bottom-20 right-10 animate-pulse-slow delay-500"></div>
         </div>
 
-        <div className="relative z-10 pt-16"> {/* Add padding-top to account for fixed navbar */}
-
-        {/* Event Header */}
-        <div className="relative">
-          {event.image_url && event.image_url !== "https://example.com/image.jpg" ? (
-            <div className="h-96 bg-cover bg-center relative">
-              <div
-                className="absolute inset-0 bg-cover bg-center"
-                style={{ backgroundImage: `url(${event.image_url})` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-[#131517] via-transparent to-transparent"></div>
-              </div>
-            </div>
-          ) : (
-            <div className="h-96 bg-gradient-to-br from-blue-500/20 via-pink-500/20 to-orange-500/20 flex items-center justify-center">
-              <span className="text-8xl opacity-50">🎉</span>
-            </div>
-          )}
-
-          <div className="relative z-10 px-4 pb-8 pt-8">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-8">
-                <h1 className="text-base text-white mb-2">EVENT DETAILS</h1>
-                <div>
-                  <h1 className="text-5xl font-medium text-white">{event.title}</h1>
-                  <h2 className="text-3xl font-medium bg-gradient-to-r from-blue-500 via-pink-500 to-orange-500 bg-clip-text text-transparent leading-tight">
-                    {formatEventDate(event.event_date)}
-                  </h2>
+        <div className="relative z-10 pt-16">
+          {" "}
+          {/* Add padding-top to account for fixed navbar */}
+          {/* Event Header */}
+          <div className="relative">
+            {event.image_url &&
+            event.image_url !== "https://example.com/image.jpg" ? (
+              <div className="h-96 bg-cover bg-center relative">
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${event.image_url})` }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#131517] via-transparent to-transparent"></div>
                 </div>
-                <p className="text-white mt-4 max-w-2xl mx-auto">
-                  {event.description || "Join this amazing event and be part of something special."}
-                </p>
               </div>
+            ) : (
+              <div className="h-96 bg-gradient-to-br from-blue-500/20 via-pink-500/20 to-orange-500/20 flex items-center justify-center">
+                <span className="text-8xl opacity-50">🎉</span>
+              </div>
+            )}
 
-              <div className="flex items-center justify-center gap-4 mb-4">
-                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-xl border ${getStatusColor(event.status || 'UNKNOWN')}`}>
-                  <div className={`w-2 h-2 rounded-full ${
-                    event.status === 'LIVE' ? 'bg-green-400 animate-pulse' : 'bg-current'
-                  }`}></div>
-                  {(event.status || 'UNKNOWN').replace('_', ' ')}
-                </span>
-                <span className="text-white text-sm">
-                  Stake: {formatStakeAmount(event.stake_amount || '0')}
-                </span>
+            <div className="relative z-10 px-4 pb-8 pt-8">
+              <div className="max-w-4xl mx-auto">
+                <div className="text-center mb-8">
+                  <h1 className="text-base text-white mb-2">EVENT DETAILS</h1>
+                  <div>
+                    <h1 className="text-5xl font-medium text-white">
+                      {event.title}
+                    </h1>
+                    <h2 className="text-3xl font-medium bg-gradient-to-r from-blue-500 via-pink-500 to-orange-500 bg-clip-text text-transparent leading-tight">
+                      {formatEventDate(event.event_date)}
+                    </h2>
+                  </div>
+                  <p className="text-white mt-4 max-w-2xl mx-auto">
+                    {event.description ||
+                      "Join this amazing event and be part of something special."}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <span
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold backdrop-blur-xl border ${getStatusColor(
+                      event.status || "UNKNOWN"
+                    )}`}
+                  >
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        event.status === "LIVE"
+                          ? "bg-green-400 animate-pulse"
+                          : "bg-current"
+                      }`}
+                    ></div>
+                    {(event.status || "UNKNOWN").replace("_", " ")}
+                  </span>
+                  <span className="text-white text-sm">
+                    Stake: {formatStakeAmount(event.stake_amount || "0")}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex flex-wrap gap-4 justify-center">
-            {event.status === 'REGISTRATION_OPEN' && !participantStatus?.hasDeposited && (
-            <button
-              onClick={() => setShowDepositModal(true)}
-              className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
-            >
-              Deposit to Join
-            </button>
-          )}
-
-            {event.status === 'REGISTRATION_CLOSED' && (
-              <button
-                className="text-gray-900 bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
-              >
-                Close This Register
-              </button>
-            )}
-
-            {event.status === 'LIVE' && (
-              <>
-                {/* Organizer settle button - only show to event organizer */}
-                {authenticated && user?.wallet?.address?.toLowerCase() === event.organizer_address.toLowerCase() && (
+          {/* Action Buttons */}
+          <div className="max-w-4xl mx-auto px-4 py-6">
+            <div className="flex flex-wrap gap-4 justify-center">
+              {event.status === "REGISTRATION_OPEN" &&
+                !participantStatus?.hasDeposited && (
                   <button
-                    onClick={handleSettleEvent}
-                    disabled={settleLoading}
-                    className="text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setShowDepositModal(true)}
+                    className="text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
                   >
-                    {settleLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Settling...
+                    Deposit to Join
+                  </button>
+                )}
+
+              {event.status === "REGISTRATION_CLOSED" && (
+                <button className="text-gray-900 bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center">
+                  Close This Register
+                </button>
+              )}
+
+              {event.status === "LIVE" && (
+                <>
+                  {/* Organizer settle button - only show to event organizer */}
+                  {authenticated &&
+                    user?.wallet?.address?.toLowerCase() ===
+                      event.organizer_address.toLowerCase() && (
+                      <button
+                        onClick={handleSettleEvent}
+                        disabled={settleLoading}
+                        className="text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {settleLoading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Settling...
+                          </div>
+                        ) : (
+                          "Settle Event"
+                        )}
+                      </button>
+                    )}
+
+                  {participantStatus?.is_attend ? (
+                    <div className="text-white bg-green-500/20 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center border border-green-500/30">
+                      ✓ Already Checked In
+                    </div>
+                  ) : participantStatus ? (
+                    <button
+                      onClick={generateQRCode}
+                      className="text-gray-900 bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
+                    >
+                      Show QR Code
+                    </button>
+                  ) : (
+                    <div className="text-gray-400 bg-white/5 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center">
+                      Register to check in
+                    </div>
+                  )}
+                </>
+              )}
+
+              {event.status === "SETTLED" && (
+                <>
+                  {participantStatus?.is_attend ? (
+                    participantStatus?.is_claim ? (
+                      <div className="text-white bg-green-500/20 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center border border-green-500/30">
+                        ✓ You are already take a reward
                       </div>
                     ) : (
-                      'Settle Event'
-                    )}
-                  </button>
-                )}
-
-                {participantStatus?.is_attend ? (
-                  <div className="text-white bg-green-500/20 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center border border-green-500/30">
-                    ✓ Already Checked In
-                  </div>
-                ) : participantStatus ? (
-                  <button
-                    onClick={generateQRCode}
-                    className="text-gray-900 bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center"
-                  >
-                    Show QR Code
-                  </button>
-                ) : (
-                  <div className="text-gray-400 bg-white/5 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center">
-                    Register to check in
-                  </div>
-                )}
-              </>
-            )}
-
-            {event.status === 'SETTLED' && (
-              <>
-                {participantStatus?.is_attend ? (
-                  participantStatus?.is_claim ? (
-                    <div className="text-white bg-green-500/20 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center border border-green-500/30">
-                      ✓ You are already take a reward
-                    </div>
+                      <button
+                        onClick={handleClaimReward}
+                        disabled={claimLoading}
+                        className="text-gray-900 bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {claimLoading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                            Claiming...
+                          </div>
+                        ) : (
+                          "Claim Reward"
+                        )}
+                      </button>
+                    )
                   ) : (
-                    <button
-                      onClick={handleClaimReward}
-                      disabled={claimLoading}
-                      className="text-gray-900 bg-green-600 hover:bg-green-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {claimLoading ? (
-                        <div className="flex items-center gap-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
-                          Claiming...
-                        </div>
-                      ) : (
-                        'Claim Reward'
-                      )}
-                    </button>
-                  )
-                ) : (
-                  <div className="text-gray-400 bg-white/5 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center">
-                    You are not eligible to claim this
-                  </div>
-                )}
-              </>
-            )}
+                    <div className="text-gray-400 bg-white/5 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center">
+                      You are not eligible to claim this
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-
-        {/* Event Content */}
-        <div className="max-w-4xl mx-auto px-4 py-12">
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Main Content */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Event Information */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10">
-                <h2 className="text-3xl font-bold text-white mb-6">Event Information</h2>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
-                      <span className="text-gray-300">Stake Amount:</span>
-                      <span className="text-white font-bold text-lg">{formatStakeAmount(event.stake_amount || '0')}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
-                      <span className="text-gray-300">Max Participants:</span>
-                      <span className="text-white font-bold text-lg">{event.max_participant}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
-                      <span className="text-gray-300">Current Participants:</span>
-                      <span className="text-white font-bold text-lg">{eventData?.participant_count || 0}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
-                      <span className="text-gray-300">Registration Deadline:</span>
-                      <span className="text-white font-bold text-lg">
-                        {event.registration_deadline ? new Date(event.registration_deadline * 1000).toLocaleDateString() : 'Not set'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
-                      <span className="text-gray-300">Vault Address:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-mono text-sm bg-black/20 px-2 py-1 rounded">
-                          {event.vault_address ? `${event.vault_address.slice(0, 10)}...${event.vault_address.slice(-8)}` : 'Not available'}
+          {/* Event Content */}
+          <div className="max-w-4xl mx-auto px-4 py-12">
+            <div className="grid lg:grid-cols-3 gap-8">
+              {/* Main Content */}
+              <div className="lg:col-span-2 space-y-8">
+                {/* Event Information */}
+                <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10">
+                  <h2 className="text-3xl font-bold text-white mb-6">
+                    Event Information
+                  </h2>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
+                        <span className="text-gray-300">Stake Amount:</span>
+                        <span className="text-white font-bold text-lg">
+                          {formatStakeAmount(event.stake_amount || "0")}
                         </span>
-                        {event.vault_address && <CopyButton textToCopy={event.vault_address} />}
+                      </div>
+                      <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
+                        <span className="text-gray-300">Max Participants:</span>
+                        <span className="text-white font-bold text-lg">
+                          {event.max_participant}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
+                        <span className="text-gray-300">
+                          Current Participants:
+                        </span>
+                        <span className="text-white font-bold text-lg">
+                          {eventData?.participant_count || 0}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
-                      <span className="text-gray-300">Event ID:</span>
-                      <span className="text-white font-bold text-lg">{event.event_id}</span>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
+                        <span className="text-gray-300">
+                          Registration Deadline:
+                        </span>
+                        <span className="text-white font-bold text-lg">
+                          {event.registration_deadline
+                            ? new Date(
+                                event.registration_deadline * 1000
+                              ).toLocaleDateString()
+                            : "Not set"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
+                        <span className="text-gray-300">Vault Address:</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-mono text-sm bg-black/20 px-2 py-1 rounded">
+                            {event.vault_address
+                              ? `${event.vault_address.slice(
+                                  0,
+                                  10
+                                )}...${event.vault_address.slice(-8)}`
+                              : "Not available"}
+                          </span>
+                          {event.vault_address && (
+                            <CopyButton textToCopy={event.vault_address} />
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl">
+                        <span className="text-gray-300">Event ID:</span>
+                        <span className="text-white font-bold text-lg">
+                          {event.event_id}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Organizer Info */}
+                <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10">
+                  <h2 className="text-3xl font-bold text-white mb-6">
+                    Event Organizer
+                  </h2>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-300 text-sm mb-1">Organized by</p>
+                      <p className="text-white text-lg font-medium">
+                        {event.organizer_name ||
+                          (event.organizer_address
+                            ? `${event.organizer_address.slice(
+                                0,
+                                6
+                              )}...${event.organizer_address.slice(-4)}`
+                            : "Unknown")}
+                      </p>
+                    </div>
+                    {event.organizer_address && (
+                      <CopyButton
+                        textToCopy={event.organizer_address}
+                        displayText="Copy Address"
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* Organizer Info */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/10">
-                <h2 className="text-3xl font-bold text-white mb-6">Event Organizer</h2>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-300 text-sm mb-1">Organized by</p>
-                    <p className="text-white text-lg font-medium">
-                      {event.organizer_name || (event.organizer_address ? `${event.organizer_address.slice(0, 6)}...${event.organizer_address.slice(-4)}` : 'Unknown')}
+              {/* Sidebar */}
+              <div className="space-y-6">
+                {/* Registration Progress */}
+                <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-6 border border-white/10">
+                  <h3 className="text-2xl font-bold text-white mb-4">
+                    Registration Progress
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-300">Participants</span>
+                      <span className="text-white font-bold">
+                        {eventData?.participant_count || 0}/
+                        {event.max_participant}
+                      </span>
+                    </div>
+                    <div className="w-full bg-white/20 rounded-full h-3">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 via-pink-500 to-orange-500 h-3 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${Math.min(progressPercentage, 100)}%`,
+                        }}
+                      ></div>
+                    </div>
+                    <p className="text-sm text-gray-300 text-center">
+                      {progressPercentage.toFixed(1)}% filled
                     </p>
                   </div>
-                  {event.organizer_address && (
-                    <CopyButton textToCopy={event.organizer_address} displayText="Copy Address" />
-                  )}
                 </div>
-              </div>
-            </div>
 
-            {/* Sidebar */}
-            <div className="space-y-6">
-              {/* Registration Progress */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-6 border border-white/10">
-                <h3 className="text-2xl font-bold text-white mb-4">Registration Progress</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-300">Participants</span>
-                    <span className="text-white font-bold">{eventData?.participant_count || 0}/{event.max_participant}</span>
+                {/* Event Time */}
+                <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-6 border border-white/10">
+                  <h3 className="text-2xl font-bold text-white mb-4">
+                    Event Time
+                  </h3>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold bg-gradient-to-r from-blue-500 via-pink-500 to-orange-500 bg-clip-text text-transparent">
+                      {formatEventTime(event.event_date)}
+                    </p>
+                    <p className="text-gray-300 mt-2">
+                      {formatEventDate(event.event_date)}
+                    </p>
                   </div>
-                  <div className="w-full bg-white/20 rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 via-pink-500 to-orange-500 h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-                    ></div>
-                  </div>
-                  <p className="text-sm text-gray-300 text-center">
-                    {progressPercentage.toFixed(1)}% filled
-                  </p>
-                </div>
-              </div>
-
-              {/* Event Time */}
-              <div className="bg-white/5 backdrop-blur-lg rounded-3xl p-6 border border-white/10">
-                <h3 className="text-2xl font-bold text-white mb-4">Event Time</h3>
-                <div className="text-center">
-                  <p className="text-3xl font-bold bg-gradient-to-r from-blue-500 via-pink-500 to-orange-500 bg-clip-text text-transparent">
-                    {formatEventTime(event.event_date)}
-                  </p>
-                  <p className="text-gray-300 mt-2">
-                    {formatEventDate(event.event_date)}
-                  </p>
                 </div>
               </div>
             </div>
           </div>
+          {/* QR Code Modal */}
+          {showQRModal && qrCodeDataUrl && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-[#131517] rounded-2xl p-8 max-w-md w-full border border-white/10">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-bold text-white">
+                    Your Check-in QR Code
+                  </h3>
+                  <button
+                    onClick={() => setShowQRModal(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg
+                      className="w-6 h-6"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* QR Code */}
+                <div className="bg-white p-4 rounded-xl mb-6 flex items-center justify-center">
+                  <img
+                    src={qrCodeDataUrl}
+                    alt="Event Check-in QR Code"
+                    className="w-64 h-64"
+                  />
+                </div>
+
+                <div className="text-center text-gray-300 mb-4">
+                  <p className="text-sm">
+                    Show this QR code at the event venue
+                  </p>
+                  <p className="text-xs mt-2">
+                    Present to event staff for check-in
+                  </p>
+                </div>
+
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg
+                      className="w-4 h-4 text-blue-400"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="text-xs font-medium text-blue-400">
+                      Important
+                    </span>
+                  </div>
+                  <ul className="text-xs text-gray-300 space-y-1">
+                    <li>
+                      • This QR code is unique to your wallet and this event
+                    </li>
+                    <li>• You can access it again from this event page</li>
+                    <li>• Event ID: {event.event_id}</li>
+                  </ul>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(qrCodeDataUrl);
+                      alert("QR code copied to clipboard!");
+                    }}
+                    className="flex-1 text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all"
+                  >
+                    Copy QR Code
+                  </button>
+                  <button
+                    onClick={() => setShowQRModal(false)}
+                    className="flex-1 text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* QR Code Modal */}
-        {showQRModal && qrCodeDataUrl && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-[#131517] rounded-2xl p-8 max-w-md w-full border border-white/10">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-bold text-white">Your Check-in QR Code</h3>
-                <button
-                  onClick={() => setShowQRModal(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* QR Code */}
-              <div className="bg-white p-4 rounded-xl mb-6 flex items-center justify-center">
-                <img src={qrCodeDataUrl} alt="Event Check-in QR Code" className="w-64 h-64" />
-              </div>
-
-              <div className="text-center text-gray-300 mb-4">
-                <p className="text-sm">Show this QR code at the event venue</p>
-                <p className="text-xs mt-2">Present to event staff for check-in</p>
-              </div>
-
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-6">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-xs font-medium text-blue-400">Important</span>
-                </div>
-                <ul className="text-xs text-gray-300 space-y-1">
-                  <li>• This QR code is unique to your wallet and this event</li>
-                  <li>• You can access it again from this event page</li>
-                  <li>• Event ID: {event.event_id}</li>
-                </ul>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(qrCodeDataUrl);
-                    alert('QR code copied to clipboard!');
-                  }}
-                  className="flex-1 text-white bg-blue-600 hover:bg-blue-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center transition-all"
-                >
-                  Copy QR Code
-                </button>
-                <button
-                  onClick={() => setShowQRModal(false)}
-                  className="flex-1 text-gray-900 bg-gray-100 hover:bg-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
+        {/* Deposit Modal */}
+        {eventData && (
+          <DepositModal
+            isOpen={showDepositModal}
+            onClose={() => setShowDepositModal(false)}
+            onSuccess={handleDepositSuccess}
+            eventData={{
+              event_id: eventData.event.event_id,
+              vault_address: eventData.event.vault_address,
+              stake_amount: eventData.event.stake_amount,
+              title: eventData.event.title,
+            }}
+          />
         )}
-      </div>
-
-      {/* Deposit Modal */}
-      {eventData && (
-        <DepositModal
-          isOpen={showDepositModal}
-          onClose={() => setShowDepositModal(false)}
-          onSuccess={handleDepositSuccess}
-          eventData={{
-            event_id: eventData.event.event_id,
-            vault_address: eventData.event.vault_address,
-            stake_amount: eventData.event.stake_amount,
-            title: eventData.event.title
-          }}
-        />
-      )}
-    </section>
+      </section>
     </>
   );
 }
