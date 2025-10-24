@@ -28,7 +28,7 @@ export interface UpdateProfileRequest {
 }
 
 class ProfileAPI {
-  private baseURL = 'http://localhost:8080/api/v1';
+  private baseURL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1`;
 
   async createProfile(data: CreateProfileRequest): Promise<Profile> {
     const response = await fetch(`${this.baseURL}/profiles`, {

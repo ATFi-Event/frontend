@@ -171,7 +171,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       console.log('🔄 Getting attended participants for event settlement...');
 
       // Step 1: Call backend API to get attended participants
-      const participantsResponse = await fetch(`http://localhost:8080/api/v1/events/${event.event_id}/participants`);
+      const participantsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${event.event_id}/participants`);
 
       if (!participantsResponse.ok) {
         throw new Error(`Failed to get participants: ${participantsResponse.status}`);
@@ -263,7 +263,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       console.log(`📋 Event ID: ${event.event_id}, Wallet: ${preferredWallet.address}`);
 
       // First, get the profile data using the wallet address to retrieve the profile's UUID
-      const profileResponse = await fetch(`http://localhost:8080/api/v1/profiles/${preferredWallet.address}`);
+      const profileResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/profiles/${preferredWallet.address}`);
 
       if (!profileResponse.ok) {
         console.error('Profile not found in database');
@@ -276,7 +276,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       console.log(`✅ Found profile with user_id: ${profileUserId}`);
 
       // Verify this user is actually registered as a participant for this event
-      const participantResponse = await fetch(`http://localhost:8080/api/v1/events/${event.event_id}/participants`);
+      const participantResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${event.event_id}/participants`);
 
       if (participantResponse.ok) {
         const participantsData = await participantResponse.json();
@@ -307,7 +307,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   const loadEvent = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:8080/api/v1/events/${eventId}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${eventId}`);
       const data = await response.json();
       setEventData(data);
     } catch (err) {

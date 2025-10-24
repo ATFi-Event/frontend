@@ -104,7 +104,7 @@ function CustomDropdown({ isOpen, onClose, user, logout }: CustomDropdownProps) 
 
     setProfileLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/profiles/${walletAddress}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/profiles/${walletAddress}`);
       if (response.ok) {
         const data: Profile = await response.json();
         setProfileData(data);

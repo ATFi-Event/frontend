@@ -151,15 +151,15 @@ export default function OverviewContent() {
         // Try multiple possible endpoints
         const endpoints = [
           {
-            url: `http://localhost:8080/api/v1/events/${eventId}/status`,
+            url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${eventId}/status`,
             method: "PATCH"
           },
           {
-            url: `http://localhost:8080/api/v1/events/${eventId}`,
+            url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${eventId}`,
             method: "PATCH"
           },
           {
-            url: `http://localhost:8080/api/v1/events/${eventId}/status`,
+            url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${eventId}/status`,
             method: "PUT"
           }
         ];
@@ -244,7 +244,7 @@ export default function OverviewContent() {
       console.log('🔄 Getting attended participants for event settlement...');
 
       // Step 1: Call backend API to get attended participants
-      const participantsResponse = await fetch(`http://localhost:8080/api/v1/events/${eventData.event.event_id}/participants`);
+      const participantsResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/events/${eventData.event.event_id}/participants`);
 
       if (!participantsResponse.ok) {
         throw new Error(`Failed to get participants: ${participantsResponse.status}`);

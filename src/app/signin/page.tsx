@@ -46,7 +46,7 @@ export default function SigninRoutePage() {
 
     setIsCheckingProfile(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/profiles/${walletAddress}`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/profiles/${walletAddress}`);
 
       if (response.status === 404) {
         // Profile doesn't exist, show modal to create one
@@ -79,7 +79,7 @@ export default function SigninRoutePage() {
     setProfileError("");
 
     try {
-      const response = await fetch(`http://localhost:8080/api/v1/profiles`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/profiles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
