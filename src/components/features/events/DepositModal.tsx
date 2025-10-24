@@ -5,7 +5,7 @@ import { usePrivy, useSendTransaction } from "@privy-io/react-auth";
 import { encodeApproveUSDC, encodeDepositToVault } from "@/utils/contracts/abi";
 import { CONTRACT_ADDRESSES, CURRENT_NETWORK } from "@/utils/contracts/factory";
 import { registerUser } from "@/utils/api/events";
-import WalletService from "@/utils/walletService";
+import WalletService, { WalletInfo } from "@/utils/walletService";
 import { generateParticipantQRCode } from "@/utils/qrCode";
 
 interface DepositFlowState {
@@ -152,7 +152,7 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
         await registerUser({
           event_id: eventData.event_id,
           user_address: preferredWallet.address,
-          transaction_hash: (depositTxHash as any).hash,
+          transaction_hash: (depositTxHash as { hash: string }).hash,
           deposit_amount: eventData.stake_amount
         });
       } catch (error) {
@@ -200,7 +200,7 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
     }
   };
 
-  const checkBalanceFromBlockchain = async (preferredWallet: any) => {
+  const checkBalanceFromBlockchain = async (preferredWallet: WalletInfo) => {
     try {
       // Import web3Service dynamically to avoid server-side rendering issues
       const { Web3Service } = await import('@/utils/web3');

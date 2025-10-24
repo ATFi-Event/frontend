@@ -17,6 +17,11 @@ import { User as PrivyUser } from '@privy-io/react-auth';
 // Re-export for backward compatibility
 export type { PrivyUser };
 
+// Type guard for wallet accounts with address
+function isWalletAccount(account: any): account is any & { address: string } {
+  return account?.type === 'wallet' && 'address' in account && typeof account.address === 'string';
+}
+
 export class WalletService {
   /**
    * Get the best wallet for transactions based on user's linked accounts
@@ -45,13 +50,11 @@ export class WalletService {
     }
 
     // Check linked accounts for wallets
-    const linkedWallet = user.linkedAccounts?.find(
-      (account: any) => account.type === 'wallet' && 'address' in account
-    );
-    if (linkedWallet && 'address' in linkedWallet) {
+    const linkedWallet = user.linkedAccounts?.find(isWalletAccount);
+    if (linkedWallet) {
       return {
         id: (linkedWallet as any).id || '',
-        address: (linkedWallet as any).address || '',
+        address: linkedWallet.address || '',
         type: 'external',
         name: 'Linked Wallet'
       };
@@ -70,23 +73,25 @@ export class WalletService {
     const gmailEmail = user.google.email.toLowerCase();
     const gmailVerifiedTime = user.google.subject ? new Date(user.google.subject).getTime() : 0;
 
-    const gmailWallet = user.linkedAccounts.find((account: any) => {
+    const gmailWallet = user.linkedAccounts?.find((account: any) => {
       if (account.type !== 'wallet') return false;
 
+      const wallet = account as any;
+
       // Check if wallet is linked to Gmail account
-      if (account.email) {
-        return account.email.toLowerCase() === gmailEmail;
+      if (wallet.email) {
+        return wallet.email.toLowerCase() === gmailEmail;
       }
 
       // Check if wallet was created around the same time as Gmail account verification
-      const walletTime = account.firstVerifiedAt ? new Date(account.firstVerifiedAt).getTime() : 0;
+      const walletTime = wallet.firstVerifiedAt ? new Date(wallet.firstVerifiedAt).getTime() : 0;
       const timeDiff = Math.abs(walletTime - gmailVerifiedTime);
 
       // If wallet was created within 24 hours of Gmail verification, assume it's linked
       return timeDiff < 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     });
 
-    if (gmailWallet && 'address' in gmailWallet && gmailWallet.address) {
+    if (gmailWallet && (gmailWallet as any).address) {
       return {
         id: (gmailWallet as any).id || '',
         address: (gmailWallet as any).address || '',

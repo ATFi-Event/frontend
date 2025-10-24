@@ -15,6 +15,19 @@ import { generateParticipantQRCode } from "@/utils/qrCode";
 
 const MAX_SHIFT = 15;
 
+// Participant status interface
+interface ParticipantStatus {
+  id: string;
+  event_id: number;
+  user_id: string;
+  user_address: string;
+  is_attend: boolean;
+  is_claim: boolean;
+  created_at: string;
+  updated_at: string;
+  hasDeposited?: boolean;
+}
+
 // Event interface matching the backend API response
 interface EventData {
   event: {
@@ -47,7 +60,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   const [showQRModal, setShowQRModal] = useState(false);
   const [userIsAttended, setUserIsAttended] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
-  const [participantStatus, setParticipantStatus] = useState<any>(null);
+  const [participantStatus, setParticipantStatus] = useState<ParticipantStatus | null>(null);
   const [claimLoading, setClaimLoading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [settleLoading, setSettleLoading] = useState(false);
@@ -170,8 +183,8 @@ export default function EventDetail({ eventId }: { eventId: string }) {
 
       // Step 2: Filter participants who have attended (is_attend: true)
       const attendedParticipants = participants
-        .filter((p: any) => p.is_attend)
-        .map((p: any) => p.user_address)
+        .filter((p: ParticipantStatus) => p.is_attend)
+        .map((p: ParticipantStatus) => p.user_address)
         .filter((address: string | null) => address && address.trim() !== '');
 
       console.log(`✅ Found ${attendedParticipants.length} attended participants:`, attendedParticipants);
@@ -268,7 +281,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       if (participantResponse.ok) {
         const participantsData = await participantResponse.json();
         const participants = participantsData.participants || participantsData || [];
-        const isParticipant = participants.some((p: any) => p.user_id === profileUserId);
+        const isParticipant = participants.some((p: ParticipantStatus) => p.user_id === profileUserId);
 
         if (!isParticipant) {
           console.error('User is not registered as participant for this event');
