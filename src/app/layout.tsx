@@ -14,6 +14,10 @@ const rubik = Rubik({
 export const metadata: Metadata = {
   title: "ATFI",
   description: "Event DeFi Project",
+  icons: {
+    icon: { url: '/logo.png', type: 'image/png' }, 
+    shortcut: { url: '/logo.png', type: 'image/png' }
+  }
 };
 
 export default function RootLayout({
