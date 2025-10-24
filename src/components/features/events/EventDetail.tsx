@@ -78,6 +78,7 @@ export default function EventDetail({ eventId }: { eventId: string }) {
 
   const handleClaimReward = async () => {
     if (!authenticated || !user || !event) return;
+    console.log('pantek')
 
     const userAddress = user.wallet?.address;
     if (!userAddress) {
@@ -102,11 +103,16 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       console.log(`Wallet type: ${preferredWallet.type === 'gmail' ? 'Gmail-linked wallet' : 'External wallet'}`);
 
       // For Gmail-linked wallets, use Privy's sendTransaction
+      console.log(`Using wallet for claim Tes: ${preferredWallet.name} (${preferredWallet.address})`);
       // For external wallets (MetaMask), use traditional method (no sendTransaction)
-      const txHash = await web3Service.claimReward(
-        event.vault_address,
-        preferredWallet.type === 'gmail' ? sendTransaction : undefined,
-        preferredWallet.type === 'gmail' ? { address: preferredWallet.address } : undefined
+      const txHash = await sendTransaction(
+        {
+          to: event.vault_address,
+          data: `0xb88a802f`,
+        },
+        {
+          address: preferredWallet.address // Use the preferred wallet for signing
+        }
       );
       console.log("Claim Reward transaction hash:", txHash);
 

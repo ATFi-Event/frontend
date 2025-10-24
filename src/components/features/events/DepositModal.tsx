@@ -57,25 +57,6 @@ export default function DepositModal({ isOpen, onClose, eventData, onSuccess }: 
     }
   };
 
-  const generateQRCode = async (eventId: number, userId: string) => {
-    try {
-      setQrCodeLoading(true);
-      const qrDataUrl = await generateParticipantQRCode(eventId, userId, {
-        width: 256,
-        margin: 2,
-        color: {
-          dark: '#000000',
-          light: '#FFFFFF'
-        }
-      });
-      setQrCodeDataUrl(qrDataUrl);
-      setShowQRCode(true);
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-    } finally {
-      setQrCodeLoading(false);
-    }
-  };
 
   const handleDeposit = async () => {
     if (!authenticated || !user) {
