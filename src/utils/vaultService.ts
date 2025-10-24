@@ -135,19 +135,54 @@ export class VaultService {
         throw new Error('MetaMask is not installed');
       }
 
+      // Validate inputs
+      if (!userAddress || !vaultAddress || !amount) {
+        throw new Error('Invalid input parameters for USDC approval');
+      }
+
+      const amountNum = parseFloat(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new Error('Invalid amount for USDC approval');
+      }
+
       const usdcAddress = CONTRACT_ADDRESSES[CURRENT_NETWORK].USDC;
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const usdcContract = new Contract(usdcAddress, USDC_ABI, signer);
 
+      // Check user's USDC balance first
+      const balance = await usdcContract.balanceOf(userAddress);
+      const balanceNum = parseFloat(formatUnits(balance, 6));
+
+      if (balanceNum < amountNum) {
+        throw new Error(`Insufficient USDC balance. Available: ${balanceNum.toFixed(2)} USDC, Required: ${amountNum.toFixed(2)} USDC`);
+      }
+
       // Convert amount to wei (USDC has 6 decimals)
       const amountWei = parseUnits(amount, 6);
+
+      console.log(`Approving ${amount} USDC (${amountWei} wei) for vault ${vaultAddress}`);
 
       // Approve USDC
       const tx = await usdcContract.approve(vaultAddress, amountWei);
       return tx.hash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error approving USDC:', error);
+
+      // Provide more specific error messages
+      if (error?.message) {
+        if (error.message.includes('insufficient funds')) {
+          throw new Error('Insufficient funds for gas fees. Please add ETH to your wallet.');
+        } else if (error.message.includes('execution reverted')) {
+          throw new Error('USDC approval failed. This could be due to:\n' +
+                       '• Insufficient USDC balance\n' +
+                       '• Invalid vault contract address\n' +
+                       '• Network connectivity issues');
+        } else if (error.message.includes('user rejected transaction')) {
+          throw new Error('Transaction was cancelled by user.');
+        }
+      }
+
       throw new Error(`Failed to approve USDC: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -161,15 +196,37 @@ export class VaultService {
         throw new Error('MetaMask is not installed');
       }
 
+      if (!vaultAddress) {
+        throw new Error('Invalid vault address');
+      }
+
       const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const vaultContract = new Contract(vaultAddress, VAULT_ABI, signer);
 
+      console.log('Depositing to vault:', vaultAddress);
+
       // Call deposit function
       const tx = await vaultContract.deposit();
       return tx.hash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error depositing to vault:', error);
+
+      // Provide more specific error messages
+      if (error?.message) {
+        if (error.message.includes('insufficient funds')) {
+          throw new Error('Insufficient funds for gas fees. Please add ETH to your wallet.');
+        } else if (error.message.includes('execution reverted')) {
+          throw new Error('Vault deposit failed. This could be due to:\n' +
+                       '• Insufficient USDC allowance\n' +
+                       '• Invalid vault contract address\n' +
+                       '• Vault is not accepting deposits\n' +
+                       '• Registration period has ended');
+        } else if (error.message.includes('user rejected transaction')) {
+          throw new Error('Transaction was cancelled by user.');
+        }
+      }
+
       throw new Error(`Failed to deposit to vault: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }

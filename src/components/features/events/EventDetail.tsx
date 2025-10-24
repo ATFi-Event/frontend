@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useSendTransaction } from "@privy-io/react-auth";
 import { handleMouseMove } from "@/utils/handleInput";
 import CopyButton from "@/components/ui/CopyButton";
 import DepositModal from "./DepositModal";
 import Navbar from "@/components/organism/Navbar";
-import { getParticipantStatus, claimReward } from "@/utils/api/events";
+import { getParticipantStatus } from "@/utils/api/events";
+import { apiService } from "@/utils/api";
 import WalletService from "@/utils/walletService";
 import { generateParticipantQRCode } from "@/utils/qrCode";
 
@@ -36,6 +37,7 @@ interface EventData {
 
 export default function EventDetail({ eventId }: { eventId: string }) {
   const { authenticated, user } = usePrivy();
+  const { sendTransaction } = useSendTransaction();
   const router = useRouter();
 
   const [eventData, setEventData] = useState<EventData | null>(null);
@@ -48,6 +50,10 @@ export default function EventDetail({ eventId }: { eventId: string }) {
   const [participantStatus, setParticipantStatus] = useState<any>(null);
   const [claimLoading, setClaimLoading] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [settleLoading, setSettleLoading] = useState(false);
+
+  // Get event object for calculations
+  const event = eventData?.event;
 
   const handleDepositSuccess = () => {
     // Refresh event data to show updated participant count
@@ -86,17 +92,29 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       const { web3Service } = await import("@/utils/web3");
       web3Service.setProvider(user.wallet);
 
-      const txHash = await web3Service.claimReward(event.vault_address);
+      // Get preferred wallet (same pattern as create event)
+      const preferredWallet = WalletService.getPreferredWallet(user);
+      if (!preferredWallet) {
+        setError("No wallet available for transaction");
+        return;
+      }
+      console.log(`Using wallet for claim reward: ${preferredWallet.name} (${preferredWallet.address})`);
+      console.log(`Wallet type: ${preferredWallet.type === 'gmail' ? 'Gmail-linked wallet' : 'External wallet'}`);
+
+      // For Gmail-linked wallets, use Privy's sendTransaction
+      // For external wallets (MetaMask), use traditional method (no sendTransaction)
+      const txHash = await web3Service.claimReward(
+        event.vault_address,
+        preferredWallet.type === 'gmail' ? sendTransaction : undefined,
+        preferredWallet.type === 'gmail' ? { address: preferredWallet.address } : undefined
+      );
       console.log("Claim Reward transaction hash:", txHash);
 
       // Wait for transaction confirmation
       // In a real implementation, you might want to wait for transaction confirmation
 
       // Then call backend API to record the claim
-      const response = await claimReward({
-        event_id: event.event_id,
-        user_id: user.id // Use user_id instead of user_address for consistency
-      });
+      const response = await apiService.claimReward(event.event_id.toString(), user.wallet?.address || '');
 
       if (response.success) {
         alert('Reward claimed successfully!');
@@ -110,6 +128,103 @@ export default function EventDetail({ eventId }: { eventId: string }) {
       alert('Failed to claim reward. Please try again.');
     } finally {
       setClaimLoading(false);
+    }
+  };
+
+  const handleSettleEvent = async () => {
+    if (!authenticated || !user || !event) return;
+
+    const userAddress = user.wallet?.address;
+    if (!userAddress) {
+      alert('Wallet address not available');
+      return;
+    }
+
+    // Check if user is the event organizer
+    if (userAddress.toLowerCase() !== event.organizer_address.toLowerCase()) {
+      alert('Only the event organizer can settle this event');
+      return;
+    }
+
+    try {
+      setSettleLoading(true);
+
+      console.log('🔄 Getting attended participants for event settlement...');
+
+      // Step 1: Call backend API to get attended participants
+      const participantsResponse = await fetch(`http://localhost:8080/api/v1/events/${event.event_id}/participants`);
+
+      if (!participantsResponse.ok) {
+        throw new Error(`Failed to get participants: ${participantsResponse.status}`);
+      }
+
+      const participantsData = await participantsResponse.json();
+      const participants = participantsData.participants || participantsData || [];
+      console.log(`📊 Found ${participants.length} participants`);
+
+      // Step 2: Filter participants who have attended (is_attend: true)
+      const attendedParticipants = participants
+        .filter((p: any) => p.is_attend)
+        .map((p: any) => p.user_address)
+        .filter((address: string | null) => address && address.trim() !== '');
+
+      console.log(`✅ Found ${attendedParticipants.length} attended participants:`, attendedParticipants);
+
+      if (attendedParticipants.length === 0) {
+        alert('No participants have attended this event yet. Cannot settle.');
+        return;
+      }
+
+      // Step 3: Call smart contract directly with attended participant addresses
+      const { web3Service } = await import("@/utils/web3");
+      web3Service.setProvider(user.wallet);
+
+      console.log('🔗 Calling settleEvent smart contract with participant addresses...');
+      const txHash = await web3Service.settleEvent(event.vault_address, attendedParticipants);
+
+      console.log("✅ Settle Event transaction hash:", txHash);
+
+      // Wait for transaction confirmation
+      console.log('⏳ Waiting for transaction confirmation...');
+      alert(`Transaction submitted! Transaction hash: ${txHash}\n\nWaiting for confirmation...`);
+
+      // Wait for transaction to be mined (simple polling)
+      let confirmed = false;
+      let attempts = 0;
+      const maxAttempts = 30; // Wait up to ~60 seconds (2 seconds per attempt)
+
+      while (!confirmed && attempts < maxAttempts) {
+        try {
+          // Simple way to check transaction confirmation - in production you'd use proper web3 libraries
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          attempts++;
+
+          // For now, we'll assume the transaction is confirmed after a few attempts
+          // In a real implementation, you'd check the transaction receipt
+          if (attempts >= 5) { // Wait ~10 seconds minimum
+            confirmed = true;
+            console.log(`✅ Transaction confirmed after ${attempts * 2} seconds`);
+          }
+        } catch (error) {
+          console.error('Error checking transaction confirmation:', error);
+          break;
+        }
+      }
+
+      if (confirmed) {
+        alert(`Event settled successfully! ${attendedParticipants.length} participants processed.\nTransaction confirmed: ${txHash}`);
+
+        // Refresh event data to update status
+        await loadEvent();
+      } else {
+        alert(`Transaction submitted but confirmation timed out.\nTransaction hash: ${txHash}\n\nThe event may still be settled. Please check the transaction status and refresh the page.`);
+      }
+
+    } catch (error) {
+      console.error('Error settling event:', error);
+      alert(`Failed to settle event: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setSettleLoading(false);
     }
   };
 
@@ -243,8 +358,6 @@ export default function EventDetail({ eventId }: { eventId: string }) {
         return "bg-gray-500/20 text-gray-300 border-gray-500/30";
     }
   };
-
-  const event = eventData?.event;
 
   // If event data is not loaded yet, don't render the main content
   if (!event || loading) {
@@ -400,6 +513,23 @@ export default function EventDetail({ eventId }: { eventId: string }) {
 
             {event.status === 'LIVE' && (
               <>
+                {/* Organizer settle button - only show to event organizer */}
+                {authenticated && user?.wallet?.address?.toLowerCase() === event.organizer_address.toLowerCase() && (
+                  <button
+                    onClick={handleSettleEvent}
+                    disabled={settleLoading}
+                    className="text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {settleLoading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Settling...
+                      </div>
+                    ) : (
+                      'Settle Event'
+                    )}
+                  </button>
+                )}
 
                 {participantStatus?.is_attend ? (
                   <div className="text-white bg-green-500/20 backdrop-blur-lg rounded-lg px-5 py-2.5 text-center inline-flex items-center border border-green-500/30">

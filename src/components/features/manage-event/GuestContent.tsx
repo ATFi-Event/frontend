@@ -50,9 +50,12 @@ export default function GuestContent() {
     loadData();
   }, [slug]);
 
-  const registeredNumber = eventData?.participant_count || participants.length;
-  const checkedInNumber = participants.filter(p => p.is_attend).length;
-  const claimedNumber = participants.filter(p => p.is_claim).length;
+  // Ensure participants is always an array to prevent filter errors
+  const participantsArray = Array.isArray(participants) ? participants : [];
+
+  const registeredNumber = eventData?.participant_count || participantsArray.length;
+  const checkedInNumber = participantsArray.filter(p => p.is_attend).length;
+  const claimedNumber = participantsArray.filter(p => p.is_claim).length;
   const maxParticipants = eventData?.event?.max_participant || 50; // Use event data or fallback to 50
   const registrationProgress = Math.min(100, (registeredNumber / maxParticipants) * 100);
   const attendanceRate = registeredNumber > 0 ? (checkedInNumber / registeredNumber) * 100 : 0;
@@ -62,7 +65,8 @@ export default function GuestContent() {
 
     // Update participant list by finding the participant with matching user_id
     setParticipants(prev => {
-      const updatedParticipants = prev.map(p => {
+      const prevArray = Array.isArray(prev) ? prev : [];
+      const updatedParticipants = prevArray.map(p => {
         if (p.user_id === participantData.user_id) {
           console.log("✅ Found participant to update:", p.user_id);
           return { ...p, is_attend: true };
@@ -71,7 +75,7 @@ export default function GuestContent() {
       });
 
       // If the participant wasn't found in the list (might be new data)
-      const participantExists = prev.some(p => p.user_id === participantData.user_id);
+      const participantExists = prevArray.some(p => p.user_id === participantData.user_id);
       if (!participantExists) {
         console.log("⚠️ Participant not found in current list, refreshing data...");
         // Trigger a refresh of the participant data
@@ -91,7 +95,7 @@ export default function GuestContent() {
     });
   };
 
-  const filteredParticipants = participants.filter(participant =>
+  const filteredParticipants = participantsArray.filter(participant =>
     participant.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     participant.user_address.toLowerCase().includes(searchTerm.toLowerCase())
   );

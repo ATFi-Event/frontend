@@ -310,7 +310,7 @@ export default function CreateForm() {
 
       // Redirect after 2 seconds
       setTimeout(() => {
-        window.location.href = `/event/manage/${contractResult.eventId - 1}`;
+        window.location.href = `/event/manage/${contractResult.eventId}`;
       }, 2000);
 
     } catch (err) {

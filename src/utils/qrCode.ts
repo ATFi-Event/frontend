@@ -19,9 +19,9 @@ export const generateParticipantQRData = (
 ): ParticipantQRData => {
   return {
     event_id: eventId,
-    user_address: undefined, // Not used anymore
+    user_address: '', // Not used anymore
     user_id: userId,
-    timestamp: undefined // Not used anymore
+    timestamp: Date.now() // Add current timestamp
   };
 };
 

@@ -105,10 +105,29 @@ class ApiService {
     })
   }
 
-  async settleEvent(id: string, attendedParticipants: string[]): Promise<void> {
+  // Settle event is now handled directly by frontend calling smart contract
+  // async settleEvent(id: string, attendedParticipants: string[]): Promise<void> {
+  //   return this.fetchWithAuth(`/api/v1/events/${id}/settle`, {
+  //     method: 'PUT',
+  //     body: JSON.stringify({ attended_participants: attendedParticipants }),
+  //   })
+  // }
+
+  // Settle event after successful blockchain transaction
+  async settleEvent(id: string): Promise<any> {
     return this.fetchWithAuth(`/api/v1/events/${id}/settle`, {
       method: 'PUT',
-      body: JSON.stringify({ attended_participants: attendedParticipants }),
+    })
+  }
+
+  // Claim reward for participant
+  async claimReward(eventId: string, userId: string): Promise<any> {
+    return this.fetchWithAuth('/api/v1/claim', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_id: parseInt(eventId),
+        user_id: userId
+      }),
     })
   }
 }

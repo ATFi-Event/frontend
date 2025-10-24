@@ -120,21 +120,102 @@ export class Web3Service {
     }
 
     try {
-      const transactionParams = {
+      const transactionParams: {
+        from: string;
+        to: string;
+        data: string;
+        value: string;
+        gas?: string;
+        gasPrice?: string;
+      } = {
         from: this.state.address,
         to,
         data,
         value,
       }
 
-      const txHash = await provider.request({
-        method: 'eth_sendTransaction',
-        params: [transactionParams],
-      })
+      // Check if provider has request method (MetaMask-style provider)
+      if (typeof provider.request === 'function') {
+        // Add gas estimation for write transactions
+        if (data && data !== '0x' && value === '0x0') {
+          try {
+            // Estimate gas for the transaction
+            const gasEstimate = await provider.request({
+              method: 'eth_estimateGas',
+              params: [transactionParams],
+            })
 
-      return txHash
-    } catch (error) {
-      throw new Error(`Transaction failed: ${error}`)
+            // Add some buffer to the gas estimate (20% extra)
+            const gasLimit = Math.floor(parseInt(gasEstimate, 16) * 1.2).toString(16)
+
+            // Get current gas price
+            const gasPrice = await provider.request({
+              method: 'eth_gasPrice',
+            })
+
+            transactionParams.gas = `0x${gasLimit}`
+            transactionParams.gasPrice = gasPrice
+          } catch (gasError) {
+            console.warn('Gas estimation failed, using default values:', gasError)
+            // Fallback to reasonable default values
+            transactionParams.gas = '0x100000' // 1,056,192 gas
+            transactionParams.gasPrice = '0x5B8D80' // 6 gwei in hex
+          }
+        }
+
+        const txHash = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [transactionParams],
+        })
+
+        return txHash
+      }
+      // Fallback for providers without request method (e.g., custom providers, ethers.js providers)
+      else if (provider.sendTransaction) {
+        const txHash = await provider.sendTransaction(transactionParams)
+        return txHash.hash
+      }
+      // Last resort: use ethers.js with window.ethereum
+      else if (window.ethereum) {
+        const { BrowserProvider } = await import('ethers')
+        const ethersProvider = new BrowserProvider(window.ethereum)
+        const signer = await ethersProvider.getSigner()
+        const tx = await signer.sendTransaction(transactionParams)
+        return tx.hash
+      } else {
+        throw new Error('Provider does not support transaction sending')
+      }
+    } catch (error: any) {
+      console.error('Transaction error:', error);
+
+      // Extract more detailed error information
+      let errorMessage = 'Transaction failed';
+
+      if (error?.message) {
+        errorMessage = error.message;
+
+        // Try to extract revert reason if available
+        if (error.data && error.data.includes('0x')) {
+          console.log('Transaction error data:', error.data);
+        }
+
+        // Check for common error patterns
+        if (errorMessage.includes('insufficient funds')) {
+          errorMessage = 'Insufficient funds for transaction. Please check your wallet balance.';
+        } else if (errorMessage.includes('gas required exceeds allowance')) {
+          errorMessage = 'Gas limit too low. Please try again with higher gas limit.';
+        } else if (errorMessage.includes('execution reverted')) {
+          errorMessage = 'Transaction was rejected by smart contract. Possible reasons:\n' +
+                       '• Contract conditions not met\n' +
+                       '• Invalid parameters\n' +
+                       '• Insufficient permissions\n' +
+                       '• Contract already settled or in invalid state';
+        } else if (errorMessage.includes('user rejected transaction')) {
+          errorMessage = 'Transaction was cancelled by user.';
+        }
+      }
+
+      throw new Error(errorMessage);
     }
   }
 
@@ -519,7 +600,7 @@ export class Web3Service {
   }
 
   // Claim Reward: Call claimReward function
-  async claimReward(vaultAddress: string): Promise<string> {
+  async claimReward(vaultAddress: string, sendTransaction?: Function, options?: { address?: string }): Promise<string> {
     if (!window.ethereum || !this.state.address) {
       throw new Error('Wallet not connected')
     }
@@ -534,7 +615,20 @@ export class Web3Service {
       // Create calldata for claimReward() - no parameters needed
       const data = functionSignature;
 
-      const txHash = await this.sendTransaction(vaultAddress, data);
+      // Use provided sendTransaction (Privy) or fallback to this.sendTransaction
+      let txHash: string;
+      if (sendTransaction) {
+        // Use Privy's sendTransaction with address option (same pattern as create event)
+        const txParams: any = { to: vaultAddress, data };
+        if (options?.address) {
+          txParams.address = options.address;
+        }
+        txHash = await sendTransaction(txParams);
+      } else {
+        // Use the traditional method
+        txHash = await this.sendTransaction(vaultAddress, data);
+      }
+
       return txHash;
     } catch (error) {
       console.error('Error calling claimReward:', error);
@@ -545,15 +639,19 @@ export class Web3Service {
   // Helper function to encode settleEvent parameters
   private encodeSettleEventData(functionSignature: string, attendedParticipants: string[]): string {
     // Function signature: settleEvent(address[] calldata _attendedParticipants)
-    // Function selector (4 bytes) + parameters encoding
+    // Proper ABI encoding for dynamic arrays: function selector + offset to array data + array data
 
     let data = functionSignature.slice(2); // Remove 0x prefix
 
-    // Encode array length (pad to 32 bytes)
+    // Add offset to array data (32 bytes from start of parameters section, after this offset)
+    // The array data starts immediately after the offset, so offset is 0x20 (32 in hex)
+    data += '20'.padStart(64, '0');
+
+    // Add array length (pad to 32 bytes)
     const arrayLength = attendedParticipants.length.toString(16).padStart(64, '0');
     data += arrayLength;
 
-    // Encode each address (pad to 32 bytes)
+    // Encode each address (each address is 32 bytes, left-aligned)
     for (const address of attendedParticipants) {
       const paddedAddress = address.slice(2).padStart(64, '0'); // Remove 0x and pad
       data += paddedAddress;

@@ -81,7 +81,9 @@ export default function QRScanner({ isOpen, onClose, eventId, onCheckInSuccess }
             message: response.message,
             participant: response.participant
           });
-          onCheckInSuccess?.(response.participant);
+          if (response.participant) {
+            onCheckInSuccess?.(response.participant);
+          }
         } else {
           setCheckInResult({
             success: false,
@@ -110,7 +112,9 @@ export default function QRScanner({ isOpen, onClose, eventId, onCheckInSuccess }
             message: response.message,
             participant: response.participant
           });
-          onCheckInSuccess?.(response.participant);
+          if (response.participant) {
+            onCheckInSuccess?.(response.participant);
+          }
         } else {
           setCheckInResult({
             success: false,
@@ -141,7 +145,8 @@ export default function QRScanner({ isOpen, onClose, eventId, onCheckInSuccess }
     }
   };
 
-  const handleError = (error: Error) => {
+  const handleError = (error: unknown) => {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown scanner error';
     console.error('QR Scanner error:', error);
     setCheckInResult({
       success: false,

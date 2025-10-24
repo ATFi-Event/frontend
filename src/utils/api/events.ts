@@ -152,7 +152,8 @@ export interface CheckInResponse {
 
 export interface ClaimRewardRequest {
   event_id: number;
-  user_address: string;
+  user_id?: string;
+  user_address?: string;
 }
 
 export interface ClaimRewardResponse {
